@@ -10,6 +10,10 @@ from scipy.stats import stats
 import tkinter as tk
 from tkinter import *
 from tkinter.ttk import *
+from pandas.plotting import scatter_matrix
+from pandas.plotting import lag_plot
+from pandas.plotting import autocorrelation_plot
+
 
 plt.style.use('ggplot')
 
@@ -21,7 +25,7 @@ def get_data(location):
 ##    num_rows=7223
     
     usecols=[1,2,5,19,20,21]
-    my_data=pd.read_csv(location, skiprows=19968, header=0, usecols=usecols)
+    my_data=pd.read_csv(location, skiprows=None, header=0, usecols=usecols)
 
     #na_values='NotImplemented'. 
     #The test data's NotImplemented changed to NaN so that specific column can be dropna when ready.
@@ -61,7 +65,7 @@ def clean_data(my_data):
     p=my_data.loc[:, my_data.columns.str.contains('UNUSED')].head()
 
     #Removing the UNUSED columns
-    my_data.drop(p,axis=1,inplace=True)
+##    my_data.drop(p,axis=1,inplace=True)
 
     #replacing header spaces with underscores 
     my_data.columns=my_data.columns.str.replace(' ','_')
@@ -124,6 +128,7 @@ def plot_data(my_data,temperatures,pressures):
     
     temps=my_data[pd.datetime(Y1, M1, D1, h1, m1, s1):pd.datetime(Y2, M2, D2, h2, m2, s2)][temperatures]
     print(temps)
+    
     ax1=plt.subplot(211)
     plt.plot(temps.index.to_pydatetime(),temps)
     plt.xlabel('Time of Day')
@@ -161,6 +166,9 @@ def go_to_plot():
 def go_to_analysis():
     zoom_analysis(my_data)
 
+def go_to_noise():
+    noise_check(my_data)    
+
 
 
 def zoom_analysis(my_data):
@@ -184,22 +192,55 @@ def zoom_analysis(my_data):
     the_data=my_data[start:stop]
     print(the_data)
 
-##    plt.figure(figsize=(15,15))
-
-##    plt.hist(the_data,bins=20)
-##    plt.close()
     
     the_data.hist(bins=50, figsize=(8,8))
     the_data.plot(kind='density', subplots=True, sharex=False, figsize=(8,8))
     the_data.plot(kind='box', subplots=True, sharex=False, sharey=False, figsize=(8,8))
-    plt.hist2d(the_data['pump_pr'], the_data['back_be'], bins=100)
     
+  
+    
+    plt.figure(figsize=(8,8))
+    plt.hist2d(the_data['pump_pr'], the_data['back_be'], bins=100)
 
+    scatter_matrix(the_data, alpha=0.2, figsize=(6, 6), diagonal='kde')
+
+      
     
 
     plt.show()
 
 
+
+def noise_check(my_data):
+
+    Y1=int(combo_Y1.get())
+    Y2=int(combo_Y2.get())
+    M1=int(combo_M1.get())
+    M2=int(combo_M2.get())
+    D1=int(combo_D1.get())
+    D2=int(combo_D2.get())
+    h1=int(combo_h1.get())
+    h2=int(combo_h2.get())
+    m1=int(combo_m1.get())
+    m2=int(combo_m2.get())
+    s1=int(combo_s1.get())
+    s2=int(combo_s2.get())
+
+    start=pd.datetime(Y1, M1, D1, h1, m1, s1)
+    stop=pd.datetime(Y2, M2, D2, h2, m2, s2)
+
+    the_data=my_data[start:stop]
+
+    
+    fig, axes=plt.subplots(nrows=1, ncols=1,figsize=(8,8))
+##    axes[0]=lag_plot(the_data['pump_pr'])
+##    axes[0].set_title('Lag Plot')
+    axes[0]=autocorrelation_plot(the_data['pump_pr'])
+
+    plt.show()
+
+
+  
 def bye_bye():
     plt.close()
     root.destroy()
@@ -211,7 +252,7 @@ def bye_bye():
 
 
 if __name__ == '__main__':
-    Location=r'C:\Users\96015\Desktop\Jim_Python_Code\Datasets\dynex dynex test.csv'
+    Location=r'C:\Users\96015\Desktop\Jim_Python_Code\Datasets\dynex_900rpm.csv'
     my_data=get_data(Location)
     my_data=clean_data(my_data)
     Y1,Y2,M1,M2,D1,D2,h1,h2,m1,m2,s1,s2=the_date_range(my_data)
@@ -296,6 +337,9 @@ if __name__ == '__main__':
 
     hist_btn=tk.Button(window, text="Analysis",bg='blue',fg='yellow', command=go_to_analysis)
     hist_btn.grid(column=1,row=2)
+
+    hist_btn=tk.Button(window, text="Noise",bg='blue',fg='yellow', command=go_to_noise)
+    hist_btn.grid(column=1,row=3)
             
         
     btn1 = tk.Button(topframe, text="Plot Data",bg='blue',fg='yellow', command=go_to_plot)
