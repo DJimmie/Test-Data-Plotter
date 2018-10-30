@@ -13,6 +13,7 @@ from tkinter.ttk import *
 from pandas.plotting import scatter_matrix
 from pandas.plotting import lag_plot
 from pandas.plotting import autocorrelation_plot
+from pandas.plotting import bootstrap_plot
 
 
 plt.style.use('ggplot')
@@ -164,14 +165,14 @@ def go_to_plot():
     plot_data(my_data,temperatures,pressures)
 
 def go_to_analysis():
-    zoom_analysis(my_data)
+    zoom_analysis(my_data, pressures)
 
 def go_to_noise():
     noise_check(my_data)    
 
 
 
-def zoom_analysis(my_data):
+def zoom_analysis(my_data, pressures):
 
     Y1=int(combo_Y1.get())
     Y2=int(combo_Y2.get())
@@ -197,16 +198,44 @@ def zoom_analysis(my_data):
     the_data.plot(kind='density', subplots=True, sharex=False, figsize=(8,8))
     the_data.plot(kind='box', subplots=True, sharex=False, sharey=False, figsize=(8,8))
     
-  
     
     plt.figure(figsize=(8,8))
     plt.hist2d(the_data['pump_pr'], the_data['back_be'], bins=100)
 
     scatter_matrix(the_data, alpha=0.2, figsize=(6, 6), diagonal='kde')
+    plt.title('SCATTER MATRIX')
 
+    bootstrap_plot(the_data['pump_pr'], size=50, samples=500, color='grey')
       
+    pump_press_mav=the_data.pump_pr.rolling(window=30)
+    pump_press_mav_mean=pump_press_mav.mean()
+    
+    print(pump_press_mav)
+    print(pump_press_mav_mean)
+
+    press=my_data[pd.datetime(Y1, M1, D1, h1, m1, s1):pd.datetime(Y2, M2, D2, h2, m2, s2)][pressures]
+    max_press=press.max()
+    min_press=press.min()
+    
+    print(press.head())
+    print(press.max())
     
 
+    plt.figure(figsize=(8,8))
+    plt.plot(press.index.to_pydatetime(),press, label='pump pressure')
+    plt.plot(pump_press_mav_mean.index.to_pydatetime(),pump_press_mav_mean, label='smoothed')
+    plt.xlabel('Time of Day')
+    plt.ylabel('Pressure (PSIG)')
+    y_max=round((max_press+1000),-3)
+    y_min=round((min_press-1000),-3)
+    
+    print('ymax:',y_max[0])
+    plt.ylim(y_min[0], y_max[0])
+    plt.title('Pressure',loc='left')
+##    plt.legend(press)
+    plt.legend()
+##    pump_press_mav_mean.plot(color='r')
+    
     plt.show()
 
 
@@ -231,11 +260,24 @@ def noise_check(my_data):
 
     the_data=my_data[start:stop]
 
+    plt.figure(figsize=(10,10))
+    plt.suptitle('LAG PLOTS')
+
+    ax1=plt.subplot(211)
+    lag_plot(the_data['back_be'], c='r')
+
+    ax2=plt.subplot(212)
+    lag_plot(the_data['pump_pr'])
+
+    plt.figure(figsize=(8,8))
+    autocorrelation_plot(the_data.pump_pr)
+     
+     
     
-    fig, axes=plt.subplots(nrows=1, ncols=1,figsize=(8,8))
+##    fig, axes=plt.subplots(nrows=1, ncols=2,figsize=(8,8))
 ##    axes[0]=lag_plot(the_data['pump_pr'])
 ##    axes[0].set_title('Lag Plot')
-    axes[0]=autocorrelation_plot(the_data['pump_pr'])
+##    axes[0]=autocorrelation_plot(the_data.pump_pr)
 
     plt.show()
 
@@ -260,8 +302,8 @@ if __name__ == '__main__':
     all_data=list(my_data)
     print (all_data)
     temperatures=all_data[1:4]
-    pressures=all_data[0:]
-   
+    pressures=all_data[0:1]
+    print('the pressures:', pressures)
 
     root = Tk()
     root.title("Plot Parameters")
