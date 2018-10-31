@@ -7,6 +7,7 @@ import matplotlib.colors as mcolors
 import math
 from scipy.stats import skew
 from scipy.stats import stats
+from scipy import fftpack
 import tkinter as tk
 from tkinter import *
 from tkinter.ttk import *
@@ -271,6 +272,19 @@ def noise_check(my_data):
 
     plt.figure(figsize=(8,8))
     autocorrelation_plot(the_data.pump_pr)
+
+    x=the_data['pump_pr'].values
+    f_s=100
+    X = fftpack.fft(x)
+    freqs = fftpack.fftfreq(len(x)) * f_s
+
+    fig, ax = plt.subplots()
+
+    ax.stem(freqs, np.abs(X))
+    ax.set_xlabel('Frequency in Hertz [Hz]')
+    ax.set_ylabel('Frequency Domain (Spectrum) Magnitude')
+    ax.set_xlim(-f_s / 2, f_s / 2)
+    ax.set_ylim(-5, 110)
      
      
     
