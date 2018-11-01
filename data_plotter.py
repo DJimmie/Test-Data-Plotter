@@ -16,6 +16,8 @@ from pandas.plotting import lag_plot
 from pandas.plotting import autocorrelation_plot
 from pandas.plotting import bootstrap_plot
 
+pd.set_option('precision',1)
+
 
 plt.style.use('ggplot')
 
@@ -274,17 +276,17 @@ def noise_check(my_data):
     autocorrelation_plot(the_data.pump_pr)
 
     x=the_data['pump_pr'].values
-    f_s=100
+    f_s=1
     X = fftpack.fft(x)
     freqs = fftpack.fftfreq(len(x)) * f_s
 
     fig, ax = plt.subplots()
 
-    ax.stem(freqs, np.abs(X))
+    ax.plot(freqs, np.abs(X))
     ax.set_xlabel('Frequency in Hertz [Hz]')
     ax.set_ylabel('Frequency Domain (Spectrum) Magnitude')
-    ax.set_xlim(-f_s / 2, f_s / 2)
-    ax.set_ylim(-5, 110)
+    ax.set_xlim(0, f_s / 2)
+##    ax.set_ylim(-5, 110)
      
      
     
