@@ -18,6 +18,12 @@ from pandas.plotting import bootstrap_plot
 from math import sqrt
 from numpy import mean
 from sklearn.metrics import mean_squared_error
+from random import seed
+from random import randrange
+from random import random
+from statsmodels.tsa.stattools import adfuller
+
+
 pd.set_option('precision',1)
 
 
@@ -90,12 +96,51 @@ def clean_data(my_data):
     
     return my_data
 
-if __name__ == '__main__':
-    Location=r'C:\Users\96015\Desktop\Jim_Python_Code\Datasets\dynex_900rpm.csv'
-    my_data=get_data(Location)
-    my_data=clean_data(my_data)
 
-    X=my_data['middle'].values
+
+def data_analysis(the_data):
+
+    plt.figure(figsize=(8,8))
+    plt.title('Autocorrelation')
+    autocorrelation_plot(the_data)
+
+##    plt.figure(figsize=(8,8))
+##    lag_plot(the_data)
+
+
+
+def the_random_walk():
+    
+    seed(1)
+    random_walk=list()
+    random_walk.append(-1 if random() <0.5 else 1)
+
+    for i in range (1,1000):
+        movement =(-1 if random() <0.5 else 1)
+        value=random_walk[i-1] +movement
+        random_walk.append(value)
+    
+##    series=[randrange(10) for i in range(1000)]
+##    print(series)
+
+    plt.figure(figsize=(8,8))
+    plt.title('Random Walk')
+    plt.plot (random_walk, color='black')
+
+    data_analysis(np.asarray(random_walk))
+
+##    mav_forcast(np.asarray(random_walk))
+
+    dicky_fuller_test(np.asarray(random_walk))
+
+
+
+def mav_forcast(my_data):
+
+    X=my_data
+    data_analysis(X)
+
+    
 
     window=3
     history=[X[i] for i in range (window)]
@@ -111,19 +156,46 @@ if __name__ == '__main__':
         history.append(obs)
 ##        print('predicted=%f, expected=%f' %(yhat,obs))
 
-rmse=sqrt(mean_squared_error(test, predictions))
-print ('Test RMSE:', rmse)
+    rmse=sqrt(mean_squared_error(test, predictions))
+    print ('Test RMSE:', rmse)
 
-plt.figure(figsize=(10,8))
-plt.plot (test, color='black')
-plt.plot(predictions, color='r')
+    plt.figure(figsize=(10,8))
+    plt.title('Actual and Predictions (all data)')
+    plt.plot (test, color='black')
+    plt.plot(predictions, color='r')
 
-plt.figure(figsize=(10,8))
-plt.plot (test[:200], color='black')
-plt.plot(predictions[:200], color='r')
+    plt.figure(figsize=(10,8))
+    plt.title('Actual and Predictions (zoomed in)')
+    plt.plot (test[500:700], color='black')
+    plt.plot(predictions[500:700], color='r')
+    
 
-plt.show()
+def test_dataset(location):
 
+    my_data=get_data(location)
+    my_data=clean_data(my_data[1000:2000])
+    my_data=my_data['pump_pr'].values
+
+    mav_forcast(my_data)
+    
+def dicky_fuller_test(the_data):
+    result=adfuller(the_data)
+    print(f'ADF Statistic:{result[0]}')
+    print(f'p-value: {result[1]}')
+    print('Critical Values:')
+    for key,value in result[4].items():
+        print(f'\{key}: {value}')
+        
+
+if __name__ == '__main__':
+
+    Location=r'C:\Users\96015\Desktop\Jim_Python_Code\Datasets\dynex_900rpm.csv'
+    
+##    test_dataset(Location)
+    the_random_walk()
+
+
+    plt.show()
 
 
                   
