@@ -310,7 +310,7 @@ def bye_bye():
 
 
 if __name__ == '__main__':
-    Location=r'C:\Users\96015\Desktop\Jim_Python_Code\Datasets\dynex_900rpm.csv'
+    Location=r'C:\Users\96015\Desktop\Jim_Python_Code\Datasets\dynex dynex test.csv'
     my_data=get_data(Location)
     my_data=clean_data(my_data)
     Y1,Y2,M1,M2,D1,D2,h1,h2,m1,m2,s1,s2=the_date_range(my_data)
