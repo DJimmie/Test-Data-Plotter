@@ -1,0 +1,95 @@
+@startuml
+
+left to right direction
+'top to bottom direction
+skinparam packageStyle rectangle
+actor Command
+actor Target
+
+rectangle SearchRescue  <<System>> {
+
+
+package "Pre Sortie Ops" {
+
+usecase uc1 as "get initial target 
+--
+..Task..
+retrieve target data." 
+
+usecase uc2 as "assemble squad 
+--
+..Task..
+get required squad for sorte." 
+
+}
+'________________________________
+
+package "Sortie Ops" {
+
+
+usecase uc3 as "move to target
+--
+..Task...
+move to assigned target"
+
+
+usecase "move to initial target" as uc3a
+usecase "move to priority target" as uc3b
+
+uc3 <|--uc3a
+uc3 <|--uc3b
+
+'________________________________
+
+usecase uc4 as "Abort Sorte
+--
+..Task...
+abort and return to nest"
+
+'________________________________
+
+usecase uc5 as "Search Area
+--
+..Task...
+search area for new targets"
+
+usecase uc6 as "ID Priority Target
+--
+..Task...
+ID priority target and its location"
+
+usecase uc7 as "Assess Target
+--
+..Task...
+determine target is a priority"
+
+usecase uc8 as "Deploy Payload
+--
+..Task...
+deploy payload to the target"
+
+usecase uc9 as "Move to Nest
+--
+..Task...
+return to nest"
+
+
+}
+
+}
+'________________________________
+
+
+uc4 .> uc3: extends
+'uc3 .> uc5: includes
+uc6 .> uc5: extends
+uc7 .> uc6: extends
+uc3b .> uc7: extends
+
+Command --> uc1
+Command --> uc4
+
+uc8-->Target
+
+
+@enduml
