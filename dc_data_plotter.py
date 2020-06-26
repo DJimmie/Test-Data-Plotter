@@ -210,18 +210,22 @@ class UI(Tk):
         
     def open_directory(self):
         """Opens the directory folder for user to access"""
+
+        if (UI.fix_X!=0):
+            self.fix_x_state()
         
         x=filedialog.askopenfilename(initialdir = UI.initialdir,title = "Directory",
                                      filetypes = (("csv files","*.csv"),("all files","*.*")))
         
         print(x)
         
-        self.set_directory(x)
+        path=self.set_directory(x)
 
         the_file_name=x.split(sep='/')[-1].split('.')[0]
         self.v1.set(the_file_name)
-        dataFile=f'{the_file_name}.csv'
-        print(dataFile)
+##        dataFile=f'{the_file_name}.csv'
+        dataFile=path
+        print(f'datafile:{dataFile}')
         
         
         
@@ -286,6 +290,8 @@ class UI(Tk):
         
         UI.initialdir=self.the_dir[0]
         UI.filename=filename
+
+        return UI.initialdir+UI.filename
 
 
 
