@@ -127,3 +127,10 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# my repo support files
+development/
+older/
+DC_15K_Sensor_ Water_Hammer_test.ipynb
+drilling controls quick data plotter.ipynb
+
