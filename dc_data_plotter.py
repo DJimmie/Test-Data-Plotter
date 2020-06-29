@@ -36,6 +36,8 @@ class TestData():
     y_value=None
 
     skiprows=None
+
+    multiplot_list=list()
     
     def __init__(self,datafile):
         self.datafile=datafile
@@ -83,7 +85,8 @@ class TestData():
         xhigh=self.data[TestData.x_value].max()
         pressure_max=round(self.data[TestData.y_value].max(),ndigits=1)
 
-        ax[0]=plt.subplot(111)
+        q=111
+        ax[0]=plt.subplot(q)
         ax[0].plot(self.data[TestData.x_value],self.data[TestData.y_value])
         ax[0].axhline(y=pressure_max,linewidth=2, color='black',linestyle="--")
         ax[0].set_xlabel(TestData.x_value)
@@ -95,7 +98,26 @@ class TestData():
 
         plt.show()
         
-      
+
+    def multi_plots(self,num_plots):
+
+        if (num_plots>5):
+            return
+        
+        pd.set_option('precision',1)
+        plt.style.use('ggplot')
+        k=num_plots+1
+##        TestData.multiplot_list.append(plt.plot(self.data[TestData.x_value],self.data[TestData.y_value]))
+        
+        for i in range (1,k):
+            print(f'plot list:{TestData.multiplot_list}')
+            plt.subplot(5,1,i)
+##            plt.text(0.5,0.5,str((5,1,i)),fontsize=18, ha='center')
+            plt.plot(self.data[TestData.x_value],self.data[TestData.y_value])
+
+        plt.show()
+
+
 
 class UserInterface():
     """Parent class for the UI. Instantiates the composit Window"""
@@ -118,6 +140,8 @@ class UI(Tk):
     fix_X=0
     
     initialdir=os.getcwd()
+
+    var1=1 # single plot mode by default
 
     
     
@@ -193,16 +217,35 @@ class UI(Tk):
         self.skip_rows=Entry(self.frame1,bg='blue',fg='yellow', font='Ariel 15 bold',width=5,textvariable=self.v2)
         self.skip_rows.grid(row=5,column=2,sticky=E)
 
+        # radio buttons for multiplot option
+        self.frame2=Frame(self.frame1,relief='raised',bg='white',borderwidth=10)
+        self.frame2.grid(row=12,column=2)
+        self.var1=var1=IntVar()
+        self.Rb1=ttk.Radiobutton(self.frame2,text='Single', variable=var1,value=1,command=self.test_the_radio)
+        self.Rb1.grid(row=1, column=0,sticky=W)
+        self.Rb2=ttk.Radiobutton(self.frame2,text='Multi-plot',state='normal', variable=var1,value=2,command=self.test_the_radio)
+        self.Rb2.grid(row=2, column=0,sticky=W)
+        self.var1.set(1) # resets to default single plot mode
+
+    def test_the_radio(self):
+        print(f'this is single{self.var1.get()}')
+                
+        
+
 
     def fix_x_state(self):
         
         if (UI.fix_X!=1):
             UI.fix_X=1
             self.set_x_value['bg']='red'
+            self.Rb2.config(state = NORMAL)
             clear_plot_variables()
+            
         else:
             UI.fix_X=0
             self.set_x_value['bg']='blue'
+            self.var1.set(1) # resets to default single plot mode
+            self.Rb2.config(state = DISABLED)
             clear_plot_variables()
 
         print(UI.fix_X)
@@ -211,6 +254,8 @@ class UI(Tk):
     def open_directory(self):
         """Opens the directory folder for user to access"""
 
+        self.var1.set(1) # resets to default single plot mode
+        
         if (UI.fix_X!=0):
             self.fix_x_state()
         
@@ -258,7 +303,7 @@ class UI(Tk):
                 clear_plot_variables()
                 self.the_data.plot_data()
                 print(f'after plot list:{UI.l}')
-        else:
+        elif (UI.fix_X==1 and self.var1.get()==1):
             selection=self.header_list.curselection()
             print(f'selection={selection}')
 ##            c=self.header_list.get(ANCHOR)
@@ -274,6 +319,20 @@ class UI(Tk):
                 UI.l.pop()
                 print(f'popped list={UI.l}')
                 self.the_data.plot_data()
+
+        elif (UI.fix_X==1 and self.var1.get()==2):
+         
+            selection=self.header_list.curselection()
+            print(f'selection={selection}')
+            c=self.header_list.get(selection[0])
+            print(f'c={c}')
+            UI.l.append(c)
+            num_plots=len(UI.l)
+            if (len(UI.l)>1):
+                TestData.x_value=UI.l[0]
+                TestData.y_value=c
+            self.the_data.multi_plots(num_plots)
+                
                 
         print(f'c={c}')
             
