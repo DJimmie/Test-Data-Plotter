@@ -38,6 +38,11 @@ class TestData():
     skiprows=None
 
     multiplot_list=list()
+
+    multiplot_index=1
+
+    fig=None
+    ax=None
     
     def __init__(self,datafile):
         self.datafile=datafile
@@ -72,7 +77,7 @@ class TestData():
     def plot_data(self):
     
         pd.set_option('precision',1)
-        plt.style.use('ggplot')
+        plt.style.use('seaborn')
 
         fig, ax = plt.subplots(2,1,figsize=(15,10))
 
@@ -83,7 +88,7 @@ class TestData():
         
         xlow=self.data[TestData.x_value].min()
         xhigh=self.data[TestData.x_value].max()
-        pressure_max=round(self.data[TestData.y_value].max(),ndigits=1)
+        pressure_max=round(self.data[TestData.y_value].max(),ndigits=2)
 
         q=111
         ax[0]=plt.subplot(q)
@@ -101,24 +106,46 @@ class TestData():
 
     def multi_plots(self,num_plots):
 
-        if (num_plots>5):
+        multi_plot_limit=3
+        if (num_plots>multi_plot_limit):
             return
         
         pd.set_option('precision',1)
-        plt.style.use('ggplot')
-        k=num_plots+1
-##        TestData.multiplot_list.append(plt.plot(self.data[TestData.x_value],self.data[TestData.y_value]))
+        plt.style.use('seaborn')
+##        k=num_plots+1
+####        TestData.multiplot_list.append(plt.plot(self.data[TestData.x_value],self.data[TestData.y_value]))
+##        
+##        for i in range (1,k):
+##            print(f'plot list:{TestData.multiplot_list}')
+##            plt.subplot(5,1,i)
+####            plt.text(0.5,0.5,str((5,1,i)),fontsize=18, ha='center')
+##            plt.plot(self.data[TestData.x_value],self.data[TestData.y_value])
+##        plt.xlabel('Time')
+##
+##        plt.show()
+
+        #-----Other Method---------Other Method
+        if (TestData.multiplot_index==1):
+            TestData.fig, TestData.ax = plt.subplots(multi_plot_limit,1,sharex=True,figsize=(15,10))
+##            TestData.fig=plt.figure(figsize=(15,10))
+            
+        k=num_plots
+        i=TestData.multiplot_index-1
+
         
-        for i in range (1,k):
-            print(f'plot list:{TestData.multiplot_list}')
-            plt.subplot(5,1,i)
-##            plt.text(0.5,0.5,str((5,1,i)),fontsize=18, ha='center')
-            plt.plot(self.data[TestData.x_value],self.data[TestData.y_value])
-
+##        TestData.ax = plt.subplots(i+1,1,sharex=True,figsize=(15,10))
+        
+        max_value=round(self.data[TestData.y_value].max(),ndigits=2)
+        TestData.ax[i].plot(self.data[TestData.x_value],self.data[TestData.y_value])
+        TestData.ax[i].set_xlabel(TestData.x_value)
+        TestData.ax[i].set_ylabel(TestData.y_value)
+        TestData.ax[i].set_title(f'Max {TestData.y_value}:{max_value}',loc='left')
+        TestData.multiplot_index=TestData.multiplot_index+1
+        plt.draw()
+        plt.xlabel('Time')
         plt.show()
-
-
-
+            
+ 
 class UserInterface():
     """Parent class for the UI. Instantiates the composit Window"""
 
@@ -240,6 +267,7 @@ class UI(Tk):
             self.set_x_value['bg']='red'
             self.Rb2.config(state = NORMAL)
             clear_plot_variables()
+            TestData.multiplot_index=1
             
         else:
             UI.fix_X=0
@@ -320,17 +348,18 @@ class UI(Tk):
                 print(f'popped list={UI.l}')
                 self.the_data.plot_data()
 
-        elif (UI.fix_X==1 and self.var1.get()==2):
+        elif (UI.fix_X==1 and self.var1.get()==2): #Fixed x-axis and up to 5 plot rows
          
             selection=self.header_list.curselection()
             print(f'selection={selection}')
             c=self.header_list.get(selection[0])
             print(f'c={c}')
             UI.l.append(c)
-            num_plots=len(UI.l)
-            if (len(UI.l)>1):
+            num_plots=len(UI.l)-1
+            if (len(UI.l)>0):
                 TestData.x_value=UI.l[0]
                 TestData.y_value=c
+            print (f'number of plots={num_plots}')
             self.the_data.multi_plots(num_plots)
                 
                 
