@@ -51,17 +51,19 @@ def get_data(rawdata):
     test_data.rename(columns={"CommStat": "Hours","Seconds":"seconds"},inplace=True)
 
     
-
-        
     print(test_data.head())
 
     print(test_data.info())
     
 
+    # test_data['Hours']=0
     test_data['Hours']=test_data['seconds']/3600
     
-    # using apply method 
+    # using apply method to convert to numeric data types
     test_data[['seconds','Hours','room temp','box temp','dut temp','supply at box']] = test_data[['seconds','Hours','room temp','box temp','dut temp','supply at box']].apply(pd.to_numeric) 
+    # test_data['Hours']=test_data['seconds']/3600
+    
+        
 
     print(test_data.info())
     
