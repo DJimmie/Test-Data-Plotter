@@ -233,18 +233,21 @@ pA='supply at box'
 
 my_path=raw_folder_path
     
-x=filedialog.askopenfilename(parent=None,initialdir = my_path,title = "Data Repository",filetypes = (("all files","*.*"),("*.csv","*.txt")))
+
+x=filedialog.askopenfilename(initialdir = my_path,title = "Data Repository",filetypes = (("all files","*.*"),("*.csv","*.txt")))
 filename, file_extension = os.path.splitext(x)
 datafile=f'{filename}{file_extension}'
 title_from_filename=os.path.basename(filename)
 
 a=get_data(datafile)
 print(a.head())
+
 plot_data(a)
 
 print(datafile)
 
 root = Tk()
+
 root.geometry('1000x600')
 root['bg']='blue'
 
@@ -270,34 +273,14 @@ high_scale.config(label='Max Time (Hours)', tickinterval=sti,
 high_scale.pack(anchor=CENTER,pady=20)
 
 
-# l1=Label(root,text='Enter Start Time for Ramp',font=("Helvetica", 14))
-# l1.pack(anchor=W)
-# sv=DoubleVar()
-# start_value=Entry(root, textvariable=sv)
-# start_value.pack(anchor=W)
-# sv.set(round(xlow,4))
-
-# l2=Label(root,text='Enter Target Temperature',font=("Helvetica", 14))
-# l2.pack(anchor=W)
-# tt=DoubleVar()
-# target_temp=Entry(root, textvariable=tt)
-# target_temp.pack(anchor=W)
-# tt.set(400.0)
-
-
-# var3=DoubleVar()
-# temperature_scale=Scale( root, variable = var2, from_=70, to=600,
-#              orient="vertical",resolution=1,command=var3.set(70))
-
-# temperature_scale.config(label='Temperature (Hours)', tickinterval=sti,
-#                   sliderlength=20, width=30, length=300)
-
-# temperature_scale.pack(anchor=W)
-
 selected_low=Button(root,text='press',command=get_the_value)
 selected_low.pack()
 
-mainloop()
+
+
+
+root.mainloop()
+
 
 
 
