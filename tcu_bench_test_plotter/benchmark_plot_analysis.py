@@ -1,7 +1,12 @@
+
+import os
+import sys
+import subprocess
+import logging
+import datetime as dt
+
 import pandas as pd
 import numpy as np
-
-import datetime as dt
 
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
@@ -27,22 +32,35 @@ from pandas.plotting import lag_plot
 from pandas.plotting import autocorrelation_plot
 from pandas.plotting import bootstrap_plot
 
-import os
-import sys
-import subprocess
-
 import program_work_dir as pwd
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
+# logging file handler
+f_handler = logging.FileHandler('workflow_logger.log',mode='w')
+f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+f_handler.setFormatter(f_format)
+f_handler.setLevel(logging.DEBUG)
+
+ch=logging.StreamHandler()
+ch.setFormatter(f_format)
+ch.setLevel(logging.DEBUG)
+logger.addHandler(f_handler)
+logger.addHandler(ch)
 
 
 
 #------------FUNCTIONS---------------------------FUNCTIONS---------------------
 
 def get_data(rawdata):
+    logger.debug('def get_data(rawdata)')
     test_data=pd.read_csv(rawdata,skiprows=18,usecols=[0,1,2,3,4,5,6,7])
 
     test_data.drop([0],inplace=True)
 
-    print(test_data.columns)
+    logger.info(f'data columns: {test_data.columns}')
 
 
     ## remove all spaces in the header names
@@ -51,10 +69,8 @@ def get_data(rawdata):
     test_data.rename(columns={"CommStat": "Hours","Seconds":"seconds"},inplace=True)
 
     
-    print(test_data.head())
-
-    print(test_data.info())
-    
+    logger.info(f'test_data.head: {test_data.head()}')
+  
 
     # test_data['Hours']=0
     test_data['Hours']=test_data['seconds']/3600
@@ -63,17 +79,16 @@ def get_data(rawdata):
     test_data[['seconds','Hours','room temp','box temp','dut temp','supply at box']] = test_data[['seconds','Hours','room temp','box temp','dut temp','supply at box']].apply(pd.to_numeric) 
     # test_data['Hours']=test_data['seconds']/3600
     
-        
+    test_data.info()
 
-    print(test_data.info())
-    
     return test_data
 
 
 
 def plot_data(a):
 
-    
+    logger.debug('def plot_data(a)')
+
     global xlow,xhigh,xA,yA,zA,dA,pA
 
     print(f'what is a={xA}')
@@ -190,96 +205,104 @@ def plot_data(a):
     plt.show()
 
 def get_the_value():
-    print(var.get())
+    logger.debug('def get_the_value()')
+    logger.debug(var.get())
     print('jim')
-    print(var2.get())
-    
+    logger.debug(var2.get())
     
     subset=a[(a[xA]>var.get()) & (a[xA]<var2.get())]
-    
-    
+
+    logger.info(f'subset head:\n{subset.head()}')
+
     plot_data(subset)
 
 
 #------------------------------------------------------------MAIN--------
 
-# Create program working folder and its subfolders
-config_parameters={'TCU Bench Test Data':{'Purpose':'Plot and analysis the results of TCU benchmark test'}}
-client=pwd.ClientFolder(os.path.basename(__file__),config_parameters)
-ini_file=f'c:/my_python_programs/{client}/{client}.ini'
+if __name__ == "__main__":
 
-# working folder for the storage of data plots
-plot_folder=pwd.WorkDirectory('benchmark_plots',client_folder=client)
-plot_folder_path=f'C:\\my_python_programs\\{plot_folder.client_folder}\\{plot_folder.client_sub_folder}'
+    logger.info('PROGRAM START')
+    # Create program working folder and its subfolders
+    config_parameters={'TCU Bench Test Data':{'Purpose':'Plot and analysis the results of TCU benchmark test'}}
+    client=pwd.ClientFolder(os.path.basename(__file__),config_parameters)
+    ini_file=f'c:/my_python_programs/{client}/{client}.ini'
 
-mpl.rcParams["savefig.directory"] = os.chdir(plot_folder_path)
+    # working folder for the storage of data plots
+    plot_folder=pwd.WorkDirectory('benchmark_plots',client_folder=client)
+    plot_folder_path=f'C:\\my_python_programs\\{plot_folder.client_folder}\\{plot_folder.client_sub_folder}'
 
-# working folder for the storage of raw data files
-raw_folder=pwd.WorkDirectory('raw_data',client_folder=client)
-raw_folder_path=f'C:\\my_python_programs\\{raw_folder.client_folder}\\{raw_folder.client_sub_folder}'
+    mpl.rcParams["savefig.directory"] = os.chdir(plot_folder_path)
 
-
-
-global xlow, xhigh,a,xA,yA,zA,dA,pA,title_from_filename
-
+    # working folder for the storage of raw data files
+    raw_folder=pwd.WorkDirectory('raw_data',client_folder=client)
+    raw_folder_path=f'C:\\my_python_programs\\{raw_folder.client_folder}\\{raw_folder.client_sub_folder}'
 
 
 
-xA='Hours'
-yA='room temp'
-dA='box temp'
-zA='dut temp'
-pA='supply at box'
-
-my_path=raw_folder_path
-    
-
-x=filedialog.askopenfilename(initialdir = my_path,title = "Data Repository",filetypes = (("all files","*.*"),("*.csv","*.txt")))
-filename, file_extension = os.path.splitext(x)
-datafile=f'{filename}{file_extension}'
-title_from_filename=os.path.basename(filename)
-
-a=get_data(datafile)
-print(a.head())
-
-plot_data(a)
-
-print(datafile)
-
-root = Tk()
-
-root.geometry('1000x600')
-root['bg']='blue'
-
-
-scale_tick_interval=sti=(xhigh-xlow)/16
-
-var = DoubleVar()
-scale = Scale( root, variable = var, from_=xlow, to=xhigh,
-             orient="horizontal",resolution=0.01,command=None)
-
-scale.config(label='Min Time (Hours) ', tickinterval=sti,
-             sliderlength=20, width=30, length=1000)
-
-scale.pack(anchor=CENTER)
-
-var2=DoubleVar()
-high_scale=Scale( root, variable = var2, from_=xlow, to=xhigh,
-             orient="horizontal",resolution=0.01,command=var2.set(xhigh))
-
-high_scale.config(label='Max Time (Hours)', tickinterval=sti,
-                  sliderlength=20, width=30, length=1000)
-
-high_scale.pack(anchor=CENTER,pady=20)
-
-
-selected_low=Button(root,text='press',command=get_the_value)
-selected_low.pack()
+    global xlow, xhigh,a,xA,yA,zA,dA,pA,title_from_filename
 
 
 
 
-root.mainloop()
+    xA='Hours'
+    yA='room temp'
+    dA='box temp'
+    zA='dut temp'
+    pA='supply at box'
+
+    my_path=raw_folder_path
+        
+
+    x=filedialog.askopenfilename(initialdir = my_path,title = "Data Repository",filetypes = (("all files","*.*"),("*.csv","*.txt")))
+    filename, file_extension = os.path.splitext(x)
+    datafile=f'{filename}{file_extension}'
+    title_from_filename=os.path.basename(filename)
+
+    logger.debug(f'datafile: {datafile}')
+
+    a=get_data(datafile)
+    print(a.head())
+
+    plot_data(a)
+
+    print(datafile)
+
+    root = Tk()
+
+    logger.info('Start tkinter loop')
+
+    root.geometry('1000x600')
+    root['bg']='blue'
+
+
+    scale_tick_interval=sti=(xhigh-xlow)/16
+
+    var = DoubleVar()
+    scale = Scale( root, variable = var, from_=xlow, to=xhigh,
+                orient="horizontal",resolution=0.01,command=None)
+
+    scale.config(label='Min Time (Hours) ', tickinterval=sti,
+                sliderlength=20, width=30, length=1000)
+
+    scale.pack(anchor=CENTER)
+
+    var2=DoubleVar()
+    high_scale=Scale( root, variable = var2, from_=xlow, to=xhigh,
+                orient="horizontal",resolution=0.01,command=var2.set(xhigh))
+
+    high_scale.config(label='Max Time (Hours)', tickinterval=sti,
+                    sliderlength=20, width=30, length=1000)
+
+    high_scale.pack(anchor=CENTER,pady=20)
+
+
+    selected_low=Button(root,text='press',command=get_the_value)
+    selected_low.pack()
+
+
+
+
+    root.mainloop()
 
 
 
