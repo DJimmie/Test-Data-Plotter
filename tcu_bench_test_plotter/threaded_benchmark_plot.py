@@ -5,6 +5,8 @@ import subprocess
 import logging
 import datetime as dt
 
+import threading
+import time
 
 import pandas as pd
 import numpy as np
@@ -14,6 +16,7 @@ import matplotlib.dates as mdates
 import matplotlib.colors as mcolors
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib as mpl
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 import math
 
@@ -50,8 +53,6 @@ ch.setFormatter(f_format)
 ch.setLevel(logging.DEBUG)
 logger.addHandler(f_handler)
 logger.addHandler(ch)
-
-
 
 #------------FUNCTIONS---------------------------FUNCTIONS---------------------
 
@@ -203,7 +204,11 @@ def plot_data(a):
 ##    ax[4].set_xlabel(yA)
 ##    ax[4].set_ylabel(dA)
     
-    plt.show()
+    fig.tight_layout()
+    plt.close()
+
+    return fig
+    # plt.show()
 
 def get_the_value():
     logger.debug('def get_the_value()')
@@ -216,6 +221,47 @@ def get_the_value():
     logger.info(f'subset head:\n{subset.head()}')
 
     plot_data(subset)
+
+
+
+
+def bye_bye():
+        """Close the UI Window on menu Exit"""
+        logger.info('Exiting Program')
+        top.destroy()
+        root.destroy()
+
+
+
+def get_plot():
+
+    fig=plot_data(a)
+    canvas = FigureCanvasTkAgg(fig, master=top)  # A tk.DrawingArea.
+    canvas.draw()
+    canvas.get_tk_widget().grid(row=0, column=0)
+
+    
+def refresh_plot():
+
+
+    fig=plot_data(get_data(datafile))
+    canvas = FigureCanvasTkAgg(fig, master=top)  # A tk.DrawingArea.
+    # canvas.draw()
+    canvas.get_tk_widget().grid(row=0, column=0)
+    
+    plt.figure().close()
+
+    logger.debug('delay')
+    # Tk.update()
+    NUM_MINUTES=.001
+    delay=int(60000*NUM_MINUTES)
+    top.after(delay, refresh_plot)
+
+    
+
+
+    
+
 
 
 #------------------------------------------------------------MAIN--------
@@ -238,7 +284,7 @@ if __name__ == "__main__":
     raw_folder=pwd.WorkDirectory('raw_data',client_folder=client)
     raw_folder_path=f'C:\\my_python_programs\\{raw_folder.client_folder}\\{raw_folder.client_sub_folder}'
 
-    global xlow, xhigh,a,xA,yA,zA,dA,pA,title_from_filename
+    global xlow, xhigh,a,xA,yA,zA,dA,pA,title_from_filename,datafile
 
 
     xA='Hours'
@@ -249,49 +295,57 @@ if __name__ == "__main__":
 
     my_path=raw_folder_path
         
+    # x=filedialog.askopenfilename(initialdir = my_path,title = "Data Repository",filetypes = (("all files","*.*"),("*.csv","*.txt")))
+    # filename, file_extension = os.path.splitext(x)
+    # datafile=f'{filename}{file_extension}'
+    # title_from_filename=os.path.basename(filename)
+
+    # logger.debug(f'datafile: {datafile}')
+
+    # a=get_data(datafile)
+    
+
+    root = Tk()
+
+    logger.info('Start tkinter loop')
+    root['bg']='blue'
+    root.withdraw()
+
     x=filedialog.askopenfilename(initialdir = my_path,title = "Data Repository",filetypes = (("all files","*.*"),("*.csv","*.txt")))
     filename, file_extension = os.path.splitext(x)
     datafile=f'{filename}{file_extension}'
     title_from_filename=os.path.basename(filename)
 
     logger.debug(f'datafile: {datafile}')
-
     a=get_data(datafile)
-    print(a.head())
-    plot_data(a)
-    print(datafile)
 
-    root = Tk()
+    top = Toplevel(
+            root,
+            bg='#00008B',
+            bd=5)
+        
+    # self.top.geometry('1200x600')
+    # self.top.attributes('-fullscreen', True)
 
-    logger.info('Start tkinter loop')
-
-    root.geometry('1000x600')
-    root['bg']='blue'
-
-    scale_tick_interval=sti=(xhigh-xlow)/16
-
-    var = DoubleVar()
-    scale = Scale( root, variable = var, from_=xlow, to=xhigh,
-                orient="horizontal",resolution=0.01,command=None)
-
-    scale.config(label='Min Time (Hours) ', tickinterval=sti,
-                sliderlength=20, width=30, length=1000)
-
-    scale.pack(anchor=CENTER)
-
-    var2=DoubleVar()
-    high_scale=Scale( root, variable = var2, from_=xlow, to=xhigh,
-                orient="horizontal",resolution=0.01,command=var2.set(xhigh))
-
-    high_scale.config(label='Max Time (Hours)', tickinterval=sti,
-                    sliderlength=20, width=30, length=1000)
-
-    high_scale.pack(anchor=CENTER,pady=20)
-
-    selected_low=Button(root,text='press',command=get_the_value)
-    selected_low.pack()
+    menubar=Menu(top)
+    menubar.add_command(label="Exit",font='ariel',command=root.destroy)
+    menubar.add_command(label="Instructions",font='ariel',command=None)
+    top.config(menu=menubar)
 
     
+    top.protocol("WM_DELETE_WINDOW", root.destroy)
+
+    
+    # fig=plot_data(a)
+    # canvas = FigureCanvasTkAgg(fig, master=top)  # A tk.DrawingArea.
+    # canvas.draw()
+    # canvas.get_tk_widget().grid(row=0, column=0)
+
+    get_plot()
+
+    x = threading.Thread(target=refresh_plot, args=(1,),daemon=True)
+    x.start()
+
     root.mainloop()
 
 
