@@ -10,8 +10,8 @@ import pandas as pd
 import numpy as np
 
 import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-import matplotlib.colors as mcolors
+# import matplotlib.dates as mdates
+# import matplotlib.colors as mcolors
 # from mpl_toolkits.mplot3d import Axes3D
 import matplotlib as mpl
 
@@ -265,10 +265,10 @@ if __name__ == "__main__":
     
     print(datafile)
 
-    SAMPLE_RATE_MINUTES=1
+    SAMPLE_RATE_MINUTES=.1
     interval=60_000*SAMPLE_RATE_MINUTES
 
-    ani = animation.FuncAnimation(fig, plot_data, interval=interval, blit=False)
+    ani = animation.FuncAnimation(fig, plot_data, interval=interval, blit=True)
     plt.show()
 
    
