@@ -4,6 +4,7 @@ import sys
 import subprocess
 import logging
 import datetime as dt
+import tempfile
 
 
 import pandas as pd
@@ -43,8 +44,13 @@ import program_work_dir as pwd
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
+with tempfile.NamedTemporaryFile(mode='w+b',buffering=- 1, encoding=None,newline=None, suffix=None, prefix='TAF.log-',dir=None, delete=False, errors=None) as tmp:
+    temporary_filepath=tmp.name+'.log'
+
+# temporary_filepath='workflow_logger.log'
+
 # logging file handler
-f_handler = logging.FileHandler('workflow_logger.log',mode='w')
+f_handler = logging.FileHandler(temporary_filepath,mode='w')
 f_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 f_handler.setFormatter(f_format)
 f_handler.setLevel(logging.DEBUG)
@@ -56,7 +62,7 @@ logger.addHandler(f_handler)
 logger.addHandler(ch)
 
 fig, ax = plt.subplots(3,1,figsize=(15,10),tight_layout=True)
-plt.style.use('seaborn')
+# plt.style.use('seaborn')
 
 #------------FUNCTIONS---------------------------FUNCTIONS---------------------
 
@@ -87,6 +93,7 @@ def get_data(rawdata):
     
     test_data.info()
 
+
     return test_data
 
 
@@ -97,6 +104,7 @@ def plot_data(dummy):
 
     global xlow,xhigh,xA,yA,zA,dA,pA, ax
 
+    time_of_day=dt.datetime.today().strftime('%I:%M:%S %p')
     a=get_data(datafile)
 
     print(f'what is a={xA}')
@@ -130,10 +138,6 @@ def plot_data(dummy):
 ##    y_min=a[y_col].min()
 
 
-    
-   
-    
-
     # fig, ax = plt.subplots(3,1,figsize=(15,10),tight_layout=True)
 
     xlow=x.min()
@@ -141,20 +145,19 @@ def plot_data(dummy):
 
     pd.set_option('precision',2)
     
-    plt.suptitle(title_from_filename,fontsize=24, y=1)
+    plt.suptitle(f'{title_from_filename}----{time_of_day}',fontsize=24, y=1)
 
     ax[0].clear()
     ax[1].clear()
     ax[2].clear()
     
-    
-
     ax[0].plot(x,y,color='k',label=yA)
     ax[0].plot(x,z,color='g',label=zA)
     ax[0].plot(x,d,color='b',label=dA)
     ax[0].plot(x,p,color='r',label=pA)
     
     ax[0].legend()
+    ax[0].grid()
     
     ax[0].axhline(y=z_max,linewidth=1, color='black',linestyle="--")
     ax[0].axhline(y=z_min,linewidth=1, color='black',linestyle="--")
@@ -171,6 +174,7 @@ def plot_data(dummy):
     
     ax[1].set_xlabel('Temperature')
     ax[1].legend()
+    ax[1].grid()
 #     ax[1].plot(bins, y, '--')
     
     
@@ -195,6 +199,9 @@ def plot_data(dummy):
     ax[2].annotate(z_min,xy=(1.1,z_min))
     ax[2].annotate(d_min,xy=(2.1,d_min))
     ax[2].annotate(p_min,xy=(3.1,p_min))
+
+    ax[2].legend()
+    ax[2].grid()
 
     # 3D Plot
     # plot3D=True
@@ -265,10 +272,10 @@ if __name__ == "__main__":
     
     print(datafile)
 
-    SAMPLE_RATE_MINUTES=.1
+    SAMPLE_RATE_MINUTES=1
     interval=60_000*SAMPLE_RATE_MINUTES
 
-    ani = animation.FuncAnimation(fig, plot_data, interval=interval, blit=True)
+    ani = animation.FuncAnimation(fig, plot_data, interval=interval, blit=False)
     plt.show()
 
    
