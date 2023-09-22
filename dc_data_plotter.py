@@ -43,6 +43,8 @@ class TestData():
     def get_data(self):
         self.data=pd.read_csv(self.datafile, skiprows=TestData.skiprows)
         
+        #Add the 'data_index' column
+        self.data['data_index'] = range(len(self.data))
         
         print(f'THE HEADERS:{TestData.data_columns_list}')
         self.drop_unused_columns()
