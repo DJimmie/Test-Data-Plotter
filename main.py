@@ -77,6 +77,46 @@ class TestData:
         plt.title(f'Plot of {self.y_value}{" and " + y_value_2 if y_value_2 else ""}')
         plt.show()
 
+    def plot_histogram(self, column, bins=30):
+        """Plot histogram for a specified column."""
+        plt.style.use('ggplot')
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
+        # Convert to numeric, handling non-numeric values
+        data_numeric = pd.to_numeric(self.data[column], errors='coerce').dropna()
+        
+        ax.hist(data_numeric, bins=bins, color='steelblue', edgecolor='black', alpha=0.7)
+        ax.set_xlabel(column)
+        ax.set_ylabel('Frequency')
+        ax.set_title(f'Histogram of {column}')
+        plt.show()
+
+    def plot_box_plot(self, *columns):
+        """Plot box and whisker plot for one or more columns."""
+        plt.style.use('ggplot')
+        fig, ax = plt.subplots(figsize=(12, 6))
+        
+        # Prepare data for box plot
+        box_data = []
+        labels = []
+        for col in columns:
+            # Convert to numeric, handling non-numeric values
+            data_numeric = pd.to_numeric(self.data[col], errors='coerce').dropna()
+            box_data.append(data_numeric)
+            labels.append(col)
+        
+        ax.boxplot(box_data, labels=labels, patch_artist=True)
+        ax.set_ylabel('Values')
+        ax.set_title(f'Box Plot of {", ".join(columns)}')
+        
+        # Color the boxes
+        for patch, color in zip(ax.artists, ['lightblue', 'lightcoral']):
+            patch.set_facecolor(color)
+        
+        plt.xticks(rotation=45, ha='right')
+        plt.tight_layout()
+        plt.show()
+
     def get_min_max(self, column):
         """Get min and max values for a specified column."""
         return self.data[column].min(), self.data[column].max()
@@ -85,7 +125,7 @@ class UserInterface(Tk):
     def __init__(self):
         super().__init__()
         self.title("Data Plotter")
-        self.geometry("600x500")
+        self.geometry("700x600")
         self.data = None
         self.create_widgets()
 
@@ -104,8 +144,18 @@ class UserInterface(Tk):
         self.use_datetime_checkbox = Checkbutton(self, text="Use 'Datetime' for X-Axis", variable=self.use_datetime_var)
         self.use_datetime_checkbox.pack(pady=10)
 
-        self.plot_button = Button(self, text="Plot Data", command=self.plot_data)
-        self.plot_button.pack(pady=10)
+        # Plot type selection frame
+        button_frame = Frame(self)
+        button_frame.pack(pady=10)
+
+        self.plot_button = Button(button_frame, text="Line Plot", command=self.plot_line)
+        self.plot_button.grid(row=0, column=0, padx=5)
+        
+        self.histogram_button = Button(button_frame, text="Histogram", command=self.plot_histogram_ui)
+        self.histogram_button.grid(row=0, column=1, padx=5)
+        
+        self.boxplot_button = Button(button_frame, text="Box Plot", command=self.plot_boxplot_ui)
+        self.boxplot_button.grid(row=0, column=2, padx=5)
         
         self.info_label = Label(self, text="")
         self.info_label.pack(pady=10)
@@ -135,8 +185,8 @@ class UserInterface(Tk):
             self.use_datetime_checkbox.config(state=DISABLED)
             self.use_datetime_var.set(0)
 
-    def plot_data(self):
-        """Plot the data based on user selections."""
+    def plot_line(self):
+        """Plot line chart for selected columns."""
         selected_indices = self.column_list.curselection()
         selected_columns = [self.column_list.get(i) for i in selected_indices]
         
@@ -145,20 +195,61 @@ class UserInterface(Tk):
             return
         
         if len(selected_columns) > 2:
-            messagebox.showwarning("Selection Error", "Please select up to 2 columns.")
+            messagebox.showwarning("Selection Error", "Please select up to 2 columns for line plot.")
             return
 
         if len(selected_columns) == 1:
             self.data.y_value = selected_columns[0]
             self.data.plot_data()
             min_val, max_val = self.data.get_min_max(self.data.y_value)
-            self.info_label.config(text=f"{self.data.y_value}: Min={min_val}, Max={max_val}")
+            self.info_label.config(text=f"{self.data.y_value}: Min={min_val:.2f}, Max={max_val:.2f}")
         elif len(selected_columns) == 2:
             self.data.y_value = selected_columns[0]
             self.data.plot_data(selected_columns[1])
             min_val1, max_val1 = self.data.get_min_max(self.data.y_value)
             min_val2, max_val2 = self.data.get_min_max(selected_columns[1])
-            self.info_label.config(text=f"{self.data.y_value}: Min={min_val1}, Max={max_val1}\n{selected_columns[1]}: Min={min_val2}, Max={max_val2}")
+            self.info_label.config(text=f"{self.data.y_value}: Min={min_val1:.2f}, Max={max_val1:.2f}\n{selected_columns[1]}: Min={min_val2:.2f}, Max={max_val2:.2f}")
+
+    def plot_histogram_ui(self):
+        """Plot histogram for selected column."""
+        selected_indices = self.column_list.curselection()
+        selected_columns = [self.column_list.get(i) for i in selected_indices]
+        
+        if not selected_columns:
+            messagebox.showwarning("Selection Error", "Please select a column.")
+            return
+        
+        if len(selected_columns) > 1:
+            messagebox.showwarning("Selection Error", "Please select only 1 column for histogram.")
+            return
+
+        column = selected_columns[0]
+        self.data.plot_histogram(column)
+        min_val, max_val = self.data.get_min_max(column)
+        self.info_label.config(text=f"{column}: Min={min_val:.2f}, Max={max_val:.2f}")
+
+    def plot_boxplot_ui(self):
+        """Plot box and whisker plot for selected columns."""
+        selected_indices = self.column_list.curselection()
+        selected_columns = [self.column_list.get(i) for i in selected_indices]
+        
+        if not selected_columns:
+            messagebox.showwarning("Selection Error", "Please select at least one column.")
+            return
+        
+        if len(selected_columns) > 2:
+            messagebox.showwarning("Selection Error", "Please select up to 2 columns for box plot.")
+            return
+
+        self.data.plot_box_plot(*selected_columns)
+        
+        # Display stats for all selected columns
+        stats_text = ""
+        for col in selected_columns:
+            min_val, max_val = self.data.get_min_max(col)
+            stats_text += f"{col}: Min={min_val:.2f}, Max={max_val:.2f}\n"
+        
+        self.info_label.config(text=stats_text.strip())
 
 if __name__ == "__main__":
     ui = UserInterface()

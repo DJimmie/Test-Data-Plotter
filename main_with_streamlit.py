@@ -86,6 +86,48 @@ class TestData:
         """Get min and max values for any numeric column."""
         return self.data[column].min(), self.data[column].max()
 
+    def plot_histogram(self, column, bins=30):
+        """Plot histogram for a specified column."""
+        plt.style.use("ggplot")
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        # Convert to numeric, handling non-numeric values
+        data_numeric = pd.to_numeric(self.data[column], errors="coerce").dropna()
+        
+        ax.hist(data_numeric, bins=bins, color="steelblue", edgecolor="black", alpha=0.7)
+        ax.set_xlabel(column)
+        ax.set_ylabel("Frequency")
+        ax.set_title(f"Histogram of {column}")
+        
+        return fig
+
+    def plot_box_plot(self, *columns):
+        """Plot box and whisker plot for one or more columns."""
+        plt.style.use("ggplot")
+        fig, ax = plt.subplots(figsize=(10, 6))
+        
+        # Prepare data for box plot
+        box_data = []
+        labels = []
+        for col in columns:
+            # Convert to numeric, handling non-numeric values
+            data_numeric = pd.to_numeric(self.data[col], errors="coerce").dropna()
+            box_data.append(data_numeric)
+            labels.append(col)
+        
+        ax.boxplot(box_data, labels=labels, patch_artist=True)
+        ax.set_ylabel("Values")
+        ax.set_title(f"Box Plot of {', '.join(columns)}")
+        
+        # Color the boxes
+        for patch, color in zip(ax.artists, ["lightblue", "lightcoral"]):
+            patch.set_facecolor(color)
+        
+        plt.xticks(rotation=45, ha="right")
+        plt.tight_layout()
+        
+        return fig
+
 
 # === Streamlit App Logic ===
 st.title("📊 CSV Data Plotter (Auto DateTime Detection)")
@@ -100,61 +142,95 @@ if uploaded_file:
     with st.expander("Preview Data"):
         st.dataframe(data_instance.data.head())
 
+    # Select plot type
+    st.write("### Select Plot Type")
+    plot_type = st.radio("Choose a plot type:", ["Line Plot", "Histogram", "Box Plot"])
+
     # Select columns to plot
     st.write("### Select Columns to Plot")
     columns = data_instance.available_columns
-    selected_columns = st.multiselect("Select up to 2 columns to plot", columns)
+    
+    if plot_type == "Histogram":
+        selected_columns = st.multiselect("Select 1 column for histogram", columns, max_selections=1)
+    elif plot_type == "Box Plot":
+        selected_columns = st.multiselect("Select up to 2 columns for box plot", columns, max_selections=2)
+    else:  # Line Plot
+        selected_columns = st.multiselect("Select up to 2 columns for line plot", columns, max_selections=2)
 
-    # Checkbox for datetime x-axis
-    use_datetime = st.checkbox(
-        "Use datetime column for X-axis (if available)",
-        value=data_instance.x_is_datetime,
-    )
+    # Checkbox for datetime x-axis (only for line plot)
+    use_datetime = False
+    if plot_type == "Line Plot":
+        use_datetime = st.checkbox(
+            "Use datetime column for X-axis (if available)",
+            value=data_instance.x_is_datetime,
+        )
 
     # Plot button
     if st.button("Generate Plot"):
         if not selected_columns:
-            st.warning("Please select at least one column to plot.")
-        elif len(selected_columns) > 2:
-            st.warning("Please select up to 2 columns only.")
+            st.warning(f"Please select at least one column for {plot_type.lower()}.")
+        elif plot_type == "Histogram" and len(selected_columns) != 1:
+            st.warning("Please select exactly 1 column for histogram.")
+        elif plot_type in ["Line Plot", "Box Plot"] and len(selected_columns) > 2:
+            st.warning(f"Please select up to 2 columns for {plot_type.lower()}.")
         else:
-            plt.style.use("ggplot")
+            if plot_type == "Histogram":
+                fig = data_instance.plot_histogram(selected_columns[0])
+                st.pyplot(fig)
+                
+                # Show min/max values
+                st.write("### Value Summary")
+                min_val, max_val = data_instance.get_min_max(selected_columns[0])
+                st.write(f"**{selected_columns[0]}** — Min: `{min_val:.2f}`, Max: `{max_val:.2f}`")
+            
+            elif plot_type == "Box Plot":
+                fig = data_instance.plot_box_plot(*selected_columns)
+                st.pyplot(fig)
+                
+                # Show min/max values
+                st.write("### Value Summary")
+                for col in selected_columns:
+                    min_val, max_val = data_instance.get_min_max(col)
+                    st.write(f"**{col}** — Min: `{min_val:.2f}`, Max: `{max_val:.2f}`")
+            
+            else:  # Line Plot
+                plt.style.use("ggplot")
 
-            # Choose X-axis
-            if use_datetime and data_instance.x_is_datetime and data_instance.x_value in data_instance.data.columns:
-                x_data = data_instance.data[data_instance.x_value]
-                x_label = data_instance.x_value
-            else:
-                st.info("⚙️ Using index for X-axis (no valid datetime found).")
-                x_data = data_instance.data["data_index"]
-                x_label = "Index"
+                # Choose X-axis
+                if use_datetime and data_instance.x_is_datetime and data_instance.x_value in data_instance.data.columns:
+                    x_data = data_instance.data[data_instance.x_value]
+                    x_label = data_instance.x_value
+                else:
+                    st.info("⚙️ Using index for X-axis (no valid datetime found).")
+                    x_data = data_instance.data["data_index"]
+                    x_label = "Index"
 
-            fig, ax1 = plt.subplots(figsize=(10, 6))
+                fig, ax1 = plt.subplots(figsize=(10, 6))
 
-            # Convert Y columns to numeric safely
-            for col in selected_columns:
-                data_instance.data[col] = pd.to_numeric(data_instance.data[col], errors="coerce")
+                # Convert Y columns to numeric safely
+                for col in selected_columns:
+                    data_instance.data[col] = pd.to_numeric(data_instance.data[col], errors="coerce")
 
-            if len(selected_columns) == 2:
-                ax2 = ax1.twinx()
-                ax1.plot(x_data, data_instance.data[selected_columns[0]], "b-", label=selected_columns[0])
-                ax2.plot(x_data, data_instance.data[selected_columns[1]], "r--", label=selected_columns[1])
-                ax1.set_ylabel(selected_columns[0], color="b")
-                ax2.set_ylabel(selected_columns[1], color="r")
-                ax1.legend(loc="upper left")
-                ax2.legend(loc="upper right")
-            else:
-                ax1.plot(x_data, data_instance.data[selected_columns[0]], "b-", label=selected_columns[0])
-                ax1.set_ylabel(selected_columns[0], color="b")
-                ax1.legend(loc="upper left")
+                if len(selected_columns) == 2:
+                    ax2 = ax1.twinx()
+                    ax1.plot(x_data, data_instance.data[selected_columns[0]], "b-", label=selected_columns[0])
+                    ax2.plot(x_data, data_instance.data[selected_columns[1]], "r--", label=selected_columns[1])
+                    ax1.set_ylabel(selected_columns[0], color="b")
+                    ax2.set_ylabel(selected_columns[1], color="r")
+                    ax1.legend(loc="upper left")
+                    ax2.legend(loc="upper right")
+                else:
+                    ax1.plot(x_data, data_instance.data[selected_columns[0]], "b-", label=selected_columns[0])
+                    ax1.set_ylabel(selected_columns[0], color="b")
+                    ax1.legend(loc="upper left")
 
-            ax1.set_xlabel(x_label)
-            plt.title(f"Plot of {', '.join(selected_columns)}")
+                ax1.set_xlabel(x_label)
+                plt.title(f"Plot of {', '.join(selected_columns)}")
 
-            st.pyplot(fig)
+                st.pyplot(fig)
 
-            # Show min/max values
-            st.write("### Value Summary")
-            for col in selected_columns:
-                min_val, max_val = data_instance.get_min_max(col)
-                st.write(f"**{col}** — Min: `{min_val}`, Max: `{max_val}`")
+                # Show min/max values
+                st.write("### Value Summary")
+                for col in selected_columns:
+                    min_val, max_val = data_instance.get_min_max(col)
+                    st.write(f"**{col}** — Min: `{min_val:.2f}`, Max: `{max_val:.2f}`")
