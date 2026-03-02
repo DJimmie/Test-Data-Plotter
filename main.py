@@ -77,6 +77,33 @@ class TestData:
         plt.title(f'Plot of {self.y_value}{" and " + y_value_2 if y_value_2 else ""}')
         plt.show()
 
+    def plot_scatter(self, y_value_2=None):
+        """Plot scatter chart with optional second series."""
+        plt.style.use('ggplot')
+        if self.x_is_datetime and self.x_value:
+            x_data = self.data[self.x_value]
+            x_label = self.x_value
+        else:
+            x_data = self.data['data_index']
+            x_label = 'Index'
+        
+        fig, ax1 = plt.subplots(figsize=(15, 10))
+        if y_value_2:
+            ax2 = ax1.twinx()
+            ax1.scatter(x_data, self.data[self.y_value], c='b', label=self.y_value)
+            ax2.scatter(x_data, self.data[y_value_2], c='r', label=y_value_2)
+            ax1.set_ylabel(self.y_value, color='b')
+            ax2.set_ylabel(y_value_2, color='r')
+            ax1.legend(loc='upper left')
+            ax2.legend(loc='upper right')
+        else:
+            ax1.scatter(x_data, self.data[self.y_value], c='b', label=self.y_value)
+            ax1.set_ylabel(self.y_value, color='b')
+            ax1.legend(loc='upper left')
+        ax1.set_xlabel(x_label)
+        plt.title(f'Scatter of {self.y_value}{" and " + y_value_2 if y_value_2 else ""}')
+        plt.show()
+
     def plot_histogram(self, column, bins=30):
         """Plot histogram for a specified column."""
         plt.style.use('ggplot')
@@ -92,26 +119,51 @@ class TestData:
         plt.show()
 
     def plot_box_plot(self, *columns):
-        """Plot box and whisker plot for one or more columns."""
+        """Plot box and whisker plot for one or more columns and annotate stats."""
         plt.style.use('ggplot')
         fig, ax = plt.subplots(figsize=(12, 6))
         
         # Prepare data for box plot
         box_data = []
         labels = []
+        stats_list = []  # list of dicts for annotation
         for col in columns:
             # Convert to numeric, handling non-numeric values
             data_numeric = pd.to_numeric(self.data[col], errors='coerce').dropna()
             box_data.append(data_numeric)
             labels.append(col)
+            # compute stats
+            desc = data_numeric.describe()
+            stats_list.append({
+                'min': desc['min'],
+                'q1': data_numeric.quantile(0.25),
+                'median': desc['50%'],
+                'q3': data_numeric.quantile(0.75),
+                'max': desc['max'],
+                'mean': desc['mean'],
+            })
         
-        ax.boxplot(box_data, labels=labels, patch_artist=True)
+        bp = ax.boxplot(box_data, labels=labels, patch_artist=True)
         ax.set_ylabel('Values')
         ax.set_title(f'Box Plot of {", ".join(columns)}')
         
         # Color the boxes
-        for patch, color in zip(ax.artists, ['lightblue', 'lightcoral']):
+        colors = ['lightblue', 'lightcoral', 'lightgreen', 'lightyellow']
+        for patch, color in zip(bp['boxes'], colors):
             patch.set_facecolor(color)
+        
+        # annotate each box with stats
+        for i, stats in enumerate(stats_list, start=1):
+            text_x = i + 0.1
+            lines = [
+                f"Min: {stats['min']:.2f}",
+                f"Q1: {stats['q1']:.2f}",
+                f"Median: {stats['median']:.2f}",
+                f"Q3: {stats['q3']:.2f}",
+                f"Max: {stats['max']:.2f}",
+                f"Avg: {stats['mean']:.2f}",
+            ]
+            ax.text(text_x, stats['max'], "\n".join(lines), fontsize=8, va='top')
         
         plt.xticks(rotation=45, ha='right')
         plt.tight_layout()
@@ -151,11 +203,14 @@ class UserInterface(Tk):
         self.plot_button = Button(button_frame, text="Line Plot", command=self.plot_line)
         self.plot_button.grid(row=0, column=0, padx=5)
         
+        self.scatter_button = Button(button_frame, text="Scatter Plot", command=self.plot_scatter_ui)
+        self.scatter_button.grid(row=0, column=1, padx=5)
+        
         self.histogram_button = Button(button_frame, text="Histogram", command=self.plot_histogram_ui)
-        self.histogram_button.grid(row=0, column=1, padx=5)
+        self.histogram_button.grid(row=0, column=2, padx=5)
         
         self.boxplot_button = Button(button_frame, text="Box Plot", command=self.plot_boxplot_ui)
-        self.boxplot_button.grid(row=0, column=2, padx=5)
+        self.boxplot_button.grid(row=0, column=3, padx=5)
         
         self.info_label = Label(self, text="")
         self.info_label.pack(pady=10)
@@ -206,6 +261,31 @@ class UserInterface(Tk):
         elif len(selected_columns) == 2:
             self.data.y_value = selected_columns[0]
             self.data.plot_data(selected_columns[1])
+            min_val1, max_val1 = self.data.get_min_max(self.data.y_value)
+            min_val2, max_val2 = self.data.get_min_max(selected_columns[1])
+            self.info_label.config(text=f"{self.data.y_value}: Min={min_val1:.2f}, Max={max_val1:.2f}\n{selected_columns[1]}: Min={min_val2:.2f}, Max={max_val2:.2f}")
+
+    def plot_scatter_ui(self):
+        """Plot scatter chart for selected columns."""
+        selected_indices = self.column_list.curselection()
+        selected_columns = [self.column_list.get(i) for i in selected_indices]
+        
+        if not selected_columns:
+            messagebox.showwarning("Selection Error", "Please select at least one column.")
+            return
+        
+        if len(selected_columns) > 2:
+            messagebox.showwarning("Selection Error", "Please select up to 2 columns for scatter plot.")
+            return
+
+        if len(selected_columns) == 1:
+            self.data.y_value = selected_columns[0]
+            self.data.plot_scatter()
+            min_val, max_val = self.data.get_min_max(self.data.y_value)
+            self.info_label.config(text=f"{self.data.y_value}: Min={min_val:.2f}, Max={max_val:.2f}")
+        elif len(selected_columns) == 2:
+            self.data.y_value = selected_columns[0]
+            self.data.plot_scatter(selected_columns[1])
             min_val1, max_val1 = self.data.get_min_max(self.data.y_value)
             min_val2, max_val2 = self.data.get_min_max(selected_columns[1])
             self.info_label.config(text=f"{self.data.y_value}: Min={min_val1:.2f}, Max={max_val1:.2f}\n{selected_columns[1]}: Min={min_val2:.2f}, Max={max_val2:.2f}")

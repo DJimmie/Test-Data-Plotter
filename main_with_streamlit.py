@@ -102,26 +102,50 @@ class TestData:
         return fig
 
     def plot_box_plot(self, *columns):
-        """Plot box and whisker plot for one or more columns."""
+        """Plot box and whisker plot for one or more columns and annotate stats."""
         plt.style.use("ggplot")
         fig, ax = plt.subplots(figsize=(10, 6))
         
         # Prepare data for box plot
         box_data = []
         labels = []
+        stats_list = []
         for col in columns:
             # Convert to numeric, handling non-numeric values
             data_numeric = pd.to_numeric(self.data[col], errors="coerce").dropna()
             box_data.append(data_numeric)
             labels.append(col)
+            desc = data_numeric.describe()
+            stats_list.append({
+                'min': desc['min'],
+                'q1': data_numeric.quantile(0.25),
+                'median': desc['50%'],
+                'q3': data_numeric.quantile(0.75),
+                'max': desc['max'],
+                'mean': desc['mean'],
+            })
         
-        ax.boxplot(box_data, labels=labels, patch_artist=True)
+        bp = ax.boxplot(box_data, labels=labels, patch_artist=True)
         ax.set_ylabel("Values")
         ax.set_title(f"Box Plot of {', '.join(columns)}")
         
         # Color the boxes
-        for patch, color in zip(ax.artists, ["lightblue", "lightcoral"]):
+        colors = ["lightblue", "lightcoral", "lightgreen", "lightyellow"]
+        for patch, color in zip(bp['boxes'], colors):
             patch.set_facecolor(color)
+        
+        # annotate stats
+        for i, stats in enumerate(stats_list, start=1):
+            text_x = i + 0.1
+            lines = [
+                f"Min: {stats['min']:.2f}",
+                f"Q1: {stats['q1']:.2f}",
+                f"Median: {stats['median']:.2f}",
+                f"Q3: {stats['q3']:.2f}",
+                f"Max: {stats['max']:.2f}",
+                f"Avg: {stats['mean']:.2f}",
+            ]
+            ax.text(text_x, stats['max'], "\n".join(lines), fontsize=8, va='top')
         
         plt.xticks(rotation=45, ha="right")
         plt.tight_layout()
@@ -144,7 +168,7 @@ if uploaded_file:
 
     # Select plot type
     st.write("### Select Plot Type")
-    plot_type = st.radio("Choose a plot type:", ["Line Plot", "Histogram", "Box Plot"])
+    plot_type = st.radio("Choose a plot type:", ["Line Plot", "Scatter Plot", "Histogram", "Box Plot"])
 
     # Select columns to plot
     st.write("### Select Columns to Plot")
@@ -154,6 +178,8 @@ if uploaded_file:
         selected_columns = st.multiselect("Select 1 column for histogram", columns, max_selections=1)
     elif plot_type == "Box Plot":
         selected_columns = st.multiselect("Select up to 2 columns for box plot", columns, max_selections=2)
+    elif plot_type == "Scatter Plot":
+        selected_columns = st.multiselect("Select up to 2 columns for scatter plot", columns, max_selections=2)
     else:  # Line Plot
         selected_columns = st.multiselect("Select up to 2 columns for line plot", columns, max_selections=2)
 
@@ -171,7 +197,7 @@ if uploaded_file:
             st.warning(f"Please select at least one column for {plot_type.lower()}.")
         elif plot_type == "Histogram" and len(selected_columns) != 1:
             st.warning("Please select exactly 1 column for histogram.")
-        elif plot_type in ["Line Plot", "Box Plot"] and len(selected_columns) > 2:
+        elif plot_type in ["Line Plot", "Box Plot", "Scatter Plot"] and len(selected_columns) > 2:
             st.warning(f"Please select up to 2 columns for {plot_type.lower()}.")
         else:
             if plot_type == "Histogram":
@@ -188,6 +214,45 @@ if uploaded_file:
                 st.pyplot(fig)
                 
                 # Show min/max values
+                st.write("### Value Summary")
+                for col in selected_columns:
+                    min_val, max_val = data_instance.get_min_max(col)
+                    st.write(f"**{col}** — Min: `{min_val:.2f}`, Max: `{max_val:.2f}`")
+            
+            elif plot_type == "Scatter Plot":
+                plt.style.use("ggplot")
+
+                # choose x-axis data
+                if use_datetime and data_instance.x_is_datetime and data_instance.x_value in data_instance.data.columns:
+                    x_data = data_instance.data[data_instance.x_value]
+                    x_label = data_instance.x_value
+                else:
+                    st.info("⚙️ Using index for X-axis (no valid datetime found).")
+                    x_data = data_instance.data["data_index"]
+                    x_label = "Index"
+
+                fig, ax1 = plt.subplots(figsize=(10, 6))
+                for col in selected_columns:
+                    data_instance.data[col] = pd.to_numeric(data_instance.data[col], errors="coerce")
+
+                if len(selected_columns) == 2:
+                    ax2 = ax1.twinx()
+                    ax1.scatter(x_data, data_instance.data[selected_columns[0]], c="b", label=selected_columns[0])
+                    ax2.scatter(x_data, data_instance.data[selected_columns[1]], c="r", label=selected_columns[1])
+                    ax1.set_ylabel(selected_columns[0], color="b")
+                    ax2.set_ylabel(selected_columns[1], color="r")
+                    ax1.legend(loc="upper left")
+                    ax2.legend(loc="upper right")
+                else:
+                    ax1.scatter(x_data, data_instance.data[selected_columns[0]], c="b", label=selected_columns[0])
+                    ax1.set_ylabel(selected_columns[0], color="b")
+                    ax1.legend(loc="upper left")
+
+                ax1.set_xlabel(x_label)
+                plt.title(f"Scatter of {', '.join(selected_columns)}")
+                st.pyplot(fig)
+
+                # summary
                 st.write("### Value Summary")
                 for col in selected_columns:
                     min_val, max_val = data_instance.get_min_max(col)
