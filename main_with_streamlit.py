@@ -85,6 +85,16 @@ class TestData:
     def get_min_max(self, column):
         """Get min and max values for any numeric column."""
         return self.data[column].min(), self.data[column].max()
+    
+    def get_stats(self, column):
+        """Get statistical values (min, max, mean, std) for a specified column."""
+        data_numeric = pd.to_numeric(self.data[column], errors="coerce").dropna()
+        return {
+            'min': data_numeric.min(),
+            'max': data_numeric.max(),
+            'mean': data_numeric.mean(),
+            'std': data_numeric.std()
+        }
 
     def plot_histogram(self, column, bins=30):
         """Plot histogram for a specified column."""
@@ -123,6 +133,7 @@ class TestData:
                 'q3': data_numeric.quantile(0.75),
                 'max': desc['max'],
                 'mean': desc['mean'],
+                'std': data_numeric.std(),
             })
         
         bp = ax.boxplot(box_data, labels=labels, patch_artist=True)
@@ -144,6 +155,7 @@ class TestData:
                 f"Q3: {stats['q3']:.2f}",
                 f"Max: {stats['max']:.2f}",
                 f"Avg: {stats['mean']:.2f}",
+                f"Std: {stats['std']:.2f}",
             ]
             ax.text(text_x, stats['max'], "\n".join(lines), fontsize=8, va='top')
         
@@ -177,11 +189,11 @@ if uploaded_file:
     if plot_type == "Histogram":
         selected_columns = st.multiselect("Select 1 column for histogram", columns, max_selections=1)
     elif plot_type == "Box Plot":
-        selected_columns = st.multiselect("Select up to 2 columns for box plot", columns, max_selections=2)
+        selected_columns = st.multiselect("Select up to 4 columns for box plot", columns, max_selections=4)
     elif plot_type == "Scatter Plot":
-        selected_columns = st.multiselect("Select up to 2 columns for scatter plot", columns, max_selections=2)
+        selected_columns = st.multiselect("Select up to 4 columns for scatter plot", columns, max_selections=4)
     else:  # Line Plot
-        selected_columns = st.multiselect("Select up to 2 columns for line plot", columns, max_selections=2)
+        selected_columns = st.multiselect("Select up to 4 columns for line plot", columns, max_selections=4)
 
     # Checkbox for datetime x-axis (only for line plot)
     use_datetime = False
@@ -197,105 +209,64 @@ if uploaded_file:
             st.warning(f"Please select at least one column for {plot_type.lower()}.")
         elif plot_type == "Histogram" and len(selected_columns) != 1:
             st.warning("Please select exactly 1 column for histogram.")
-        elif plot_type in ["Line Plot", "Box Plot", "Scatter Plot"] and len(selected_columns) > 2:
-            st.warning(f"Please select up to 2 columns for {plot_type.lower()}.")
+        elif plot_type in ["Line Plot", "Box Plot", "Scatter Plot"] and len(selected_columns) > 4:
+            st.warning(f"Please select no more than 4 columns for {plot_type.lower()}.")
         else:
+            # determine share flag
+            share_y = False
+            if len(selected_columns) == 2:
+                share_y = st.checkbox("Share Y-axis for two columns", value=False, key="share_axis")
+            elif len(selected_columns) > 2:
+                share_y = True
+
             if plot_type == "Histogram":
                 fig = data_instance.plot_histogram(selected_columns[0])
                 st.pyplot(fig)
                 
-                # Show min/max values
+                # Show statistics
                 st.write("### Value Summary")
-                min_val, max_val = data_instance.get_min_max(selected_columns[0])
-                st.write(f"**{selected_columns[0]}** — Min: `{min_val:.2f}`, Max: `{max_val:.2f}`")
+                stats = data_instance.get_stats(selected_columns[0])
+                st.write(f"**{selected_columns[0]}** — Min: `{stats['min']:.2f}`, Max: `{stats['max']:.2f}`, Avg: `{stats['mean']:.2f}`, Std: `{stats['std']:.2f}`")
             
             elif plot_type == "Box Plot":
                 fig = data_instance.plot_box_plot(*selected_columns)
                 st.pyplot(fig)
                 
-                # Show min/max values
+                # Show statistics
                 st.write("### Value Summary")
                 for col in selected_columns:
-                    min_val, max_val = data_instance.get_min_max(col)
-                    st.write(f"**{col}** — Min: `{min_val:.2f}`, Max: `{max_val:.2f}`")
+                    stats = data_instance.get_stats(col)
+                    st.write(f"**{col}** — Min: `{stats['min']:.2f}`, Max: `{stats['max']:.2f}`, Avg: `{stats['mean']:.2f}`, Std: `{stats['std']:.2f}`")
             
             elif plot_type == "Scatter Plot":
-                plt.style.use("ggplot")
-
-                # choose x-axis data
+                # if user chose to override x-axis we still modify the instance
                 if use_datetime and data_instance.x_is_datetime and data_instance.x_value in data_instance.data.columns:
-                    x_data = data_instance.data[data_instance.x_value]
-                    x_label = data_instance.x_value
+                    pass  # instance already configured
                 else:
                     st.info("⚙️ Using index for X-axis (no valid datetime found).")
-                    x_data = data_instance.data["data_index"]
-                    x_label = "Index"
+                    data_instance.x_is_datetime = False
 
-                fig, ax1 = plt.subplots(figsize=(10, 6))
-                for col in selected_columns:
-                    data_instance.data[col] = pd.to_numeric(data_instance.data[col], errors="coerce")
-
-                if len(selected_columns) == 2:
-                    ax2 = ax1.twinx()
-                    ax1.scatter(x_data, data_instance.data[selected_columns[0]], c="b", label=selected_columns[0])
-                    ax2.scatter(x_data, data_instance.data[selected_columns[1]], c="r", label=selected_columns[1])
-                    ax1.set_ylabel(selected_columns[0], color="b")
-                    ax2.set_ylabel(selected_columns[1], color="r")
-                    ax1.legend(loc="upper left")
-                    ax2.legend(loc="upper right")
-                else:
-                    ax1.scatter(x_data, data_instance.data[selected_columns[0]], c="b", label=selected_columns[0])
-                    ax1.set_ylabel(selected_columns[0], color="b")
-                    ax1.legend(loc="upper left")
-
-                ax1.set_xlabel(x_label)
-                plt.title(f"Scatter of {', '.join(selected_columns)}")
+                fig = data_instance.plot_scatter(selected_columns, share_y=share_y)
                 st.pyplot(fig)
 
-                # summary
+                # Show statistics
                 st.write("### Value Summary")
                 for col in selected_columns:
-                    min_val, max_val = data_instance.get_min_max(col)
-                    st.write(f"**{col}** — Min: `{min_val:.2f}`, Max: `{max_val:.2f}`")
+                    stats = data_instance.get_stats(col)
+                    st.write(f"**{col}** — Min: `{stats['min']:.2f}`, Max: `{stats['max']:.2f}`, Avg: `{stats['mean']:.2f}`, Std: `{stats['std']:.2f}")
             
             else:  # Line Plot
-                plt.style.use("ggplot")
-
-                # Choose X-axis
                 if use_datetime and data_instance.x_is_datetime and data_instance.x_value in data_instance.data.columns:
-                    x_data = data_instance.data[data_instance.x_value]
-                    x_label = data_instance.x_value
+                    pass
                 else:
                     st.info("⚙️ Using index for X-axis (no valid datetime found).")
-                    x_data = data_instance.data["data_index"]
-                    x_label = "Index"
+                    data_instance.x_is_datetime = False
 
-                fig, ax1 = plt.subplots(figsize=(10, 6))
-
-                # Convert Y columns to numeric safely
-                for col in selected_columns:
-                    data_instance.data[col] = pd.to_numeric(data_instance.data[col], errors="coerce")
-
-                if len(selected_columns) == 2:
-                    ax2 = ax1.twinx()
-                    ax1.plot(x_data, data_instance.data[selected_columns[0]], "b-", label=selected_columns[0])
-                    ax2.plot(x_data, data_instance.data[selected_columns[1]], "r--", label=selected_columns[1])
-                    ax1.set_ylabel(selected_columns[0], color="b")
-                    ax2.set_ylabel(selected_columns[1], color="r")
-                    ax1.legend(loc="upper left")
-                    ax2.legend(loc="upper right")
-                else:
-                    ax1.plot(x_data, data_instance.data[selected_columns[0]], "b-", label=selected_columns[0])
-                    ax1.set_ylabel(selected_columns[0], color="b")
-                    ax1.legend(loc="upper left")
-
-                ax1.set_xlabel(x_label)
-                plt.title(f"Plot of {', '.join(selected_columns)}")
-
+                fig = data_instance.plot_data(selected_columns, share_y=share_y)
                 st.pyplot(fig)
 
-                # Show min/max values
+                # Show statistics
                 st.write("### Value Summary")
                 for col in selected_columns:
-                    min_val, max_val = data_instance.get_min_max(col)
-                    st.write(f"**{col}** — Min: `{min_val:.2f}`, Max: `{max_val:.2f}`")
+                    stats = data_instance.get_stats(col)
+                    st.write(f"**{col}** — Min: `{stats['min']:.2f}`, Max: `{stats['max']:.2f}`, Avg: `{stats['mean']:.2f}`, Std: `{stats['std']:.2f}")
