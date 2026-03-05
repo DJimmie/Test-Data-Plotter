@@ -10,9 +10,9 @@ import datetime as dt
 
 
 class TestData:
-    def __init__(self, datafile):
+    def __init__(self, datafile, header=0):
         self.datafile = datafile
-        self.data = pd.read_csv(datafile)
+        self.data = pd.read_csv(datafile, header=header)
         self.data['data_index'] = range(len(self.data))
         self.x_value = None
         self.y_value = None
@@ -107,7 +107,6 @@ class TestData:
 
         ax1.set_xlabel(x_label)
         plt.title(f"Plot of {', '.join(y_values)}")
-        plt.show()
         return fig
 
     def plot_scatter(self, y_values=None, share_y=False):
@@ -166,7 +165,6 @@ class TestData:
 
         ax1.set_xlabel(x_label)
         plt.title(f"Scatter of {', '.join(y_values)}")
-        plt.show()
         return fig
 
     def plot_histogram(self, column, bins=30):
@@ -181,7 +179,7 @@ class TestData:
         ax.set_xlabel(column)
         ax.set_ylabel('Frequency')
         ax.set_title(f'Histogram of {column}')
-        plt.show()
+        return fig
 
     def plot_box_plot(self, *columns):
         """Plot box and whisker plot for one or more columns and annotate stats."""
@@ -266,6 +264,13 @@ class UserInterface(Tk):
         self.open_button = Button(self, text="Open File", command=self.open_file)
         self.open_button.pack(pady=10)
         
+        self.header_label = Label(self, text="Header Row (0-based):")
+        self.header_label.pack(pady=5)
+        
+        self.header_entry = Entry(self)
+        self.header_entry.insert(0, "0")
+        self.header_entry.pack(pady=5)
+        
         self.column_list = Listbox(self, selectmode=MULTIPLE)
         self.column_list.pack(pady=10, fill=BOTH, expand=True)
 
@@ -302,7 +307,13 @@ class UserInterface(Tk):
         if not file_path:
             return
 
-        self.data = TestData(file_path)
+        try:
+            header_row = int(self.header_entry.get())
+        except ValueError:
+            messagebox.showerror("Invalid Input", "Header row must be an integer.")
+            return
+
+        self.data = TestData(file_path, header=header_row)
         self.update_column_list()
         self.update_datetime_option()
 
@@ -339,12 +350,14 @@ class UserInterface(Tk):
 
         if len(selected_columns) == 1:
             self.data.y_value = selected_columns[0]
-            self.data.plot_data()
+            fig = self.data.plot_data()
+            plt.show()
             stats = self.data.get_stats(self.data.y_value)
             self.info_label.config(text=f"{self.data.y_value}: Min={stats['min']:.2f}, Max={stats['max']:.2f}, Avg={stats['mean']:.2f}, Std={stats['std']:.2f}")
         else:
             self.data.y_value = selected_columns[0]
-            self.data.plot_data(selected_columns, share_y=share_flag)
+            fig = self.data.plot_data(selected_columns, share_y=share_flag)
+            plt.show()
             # gather stats for all columns
             stats_text = ""
             for col in selected_columns:
@@ -369,12 +382,14 @@ class UserInterface(Tk):
 
         if len(selected_columns) == 1:
             self.data.y_value = selected_columns[0]
-            self.data.plot_scatter()
+            fig = self.data.plot_scatter()
+            plt.show()
             stats = self.data.get_stats(self.data.y_value)
             self.info_label.config(text=f"{self.data.y_value}: Min={stats['min']:.2f}, Max={stats['max']:.2f}, Avg={stats['mean']:.2f}, Std={stats['std']:.2f}")
         else:
             self.data.y_value = selected_columns[0]
-            self.data.plot_scatter(selected_columns, share_y=share_flag)
+            fig = self.data.plot_scatter(selected_columns, share_y=share_flag)
+            plt.show()
             stats_text = ""
             for col in selected_columns:
                 s = self.data.get_stats(col)
@@ -394,7 +409,8 @@ class UserInterface(Tk):
             return
 
         column = selected_columns[0]
-        self.data.plot_histogram(column)
+        fig = self.data.plot_histogram(column)
+        plt.show()
         stats = self.data.get_stats(column)
         self.info_label.config(text=f"{column}: Min={stats['min']:.2f}, Max={stats['max']:.2f}, Avg={stats['mean']:.2f}, Std={stats['std']:.2f}")
 
@@ -411,7 +427,8 @@ class UserInterface(Tk):
             messagebox.showwarning("Selection Error", "Please select no more than 4 columns for box plot.")
             return
 
-        self.data.plot_box_plot(*selected_columns)
+        fig = self.data.plot_box_plot(*selected_columns)
+        plt.show()
         
         # Display stats for all selected columns
         stats_text = ""

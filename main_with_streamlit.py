@@ -5,9 +5,9 @@ import matplotlib.pyplot as plt
 
 # === Class Definition ===
 class TestData:
-    def __init__(self, datafile):
+    def __init__(self, datafile, header=0):
         self.datafile = datafile
-        self.data = pd.read_csv(datafile)
+        self.data = pd.read_csv(datafile, header=header)
         self.data['data_index'] = range(len(self.data))
         self.x_value = None
         self.y_value = None
@@ -164,6 +164,126 @@ class TestData:
         
         return fig
 
+    def plot_data(self, y_values=None, share_y=False):
+        """Plot data for one to four columns.
+
+        y_values may be a list of column names or a single name.  If two
+        values are provided the caller can request a shared y-axis by
+        setting ``share_y``; otherwise a twin y-axis will be used.  When
+        three or four columns are plotted they always share the same axis.
+        """
+        plt.style.use('ggplot')
+
+        # normalize input
+        if y_values is None:
+            y_values = [self.y_value] if self.y_value else []
+        elif isinstance(y_values, str):
+            y_values = [y_values]
+        else:
+            y_values = list(y_values)
+
+        if self.x_is_datetime and self.x_value:
+            x_data = self.data[self.x_value]
+            x_label = self.x_value
+        else:
+            x_data = self.data['data_index']
+            x_label = 'Index'
+
+        fig, ax1 = plt.subplots(figsize=(15, 10))
+        x_series = self.data[x_data.name] if hasattr(x_data, 'name') else x_data
+
+        # plotting logic depending on number of series
+        n = len(y_values)
+        if n == 0:
+            return fig
+        elif n == 1:
+            ax1.plot(x_series, self.data[y_values[0]], 'b-', label=y_values[0])
+            ax1.set_ylabel(y_values[0], color='b')
+            ax1.legend(loc='upper left')
+        elif n == 2:
+            if share_y:
+                colors = ['b', 'r']
+                for col, color in zip(y_values, colors):
+                    ax1.plot(x_series, self.data[col], color + '-', label=col)
+                ax1.set_ylabel(', '.join(y_values), color='b')
+                ax1.legend(loc='upper left')
+            else:
+                ax2 = ax1.twinx()
+                ax1.plot(x_series, self.data[y_values[0]], 'b-', label=y_values[0])
+                ax2.plot(x_series, self.data[y_values[1]], 'r--', label=y_values[1])
+                ax1.set_ylabel(y_values[0], color='b')
+                ax2.set_ylabel(y_values[1], color='r')
+                ax1.legend(loc='upper left')
+                ax2.legend(loc='upper right')
+        else:  # 3 or 4 series
+            colors = ['b', 'r', 'g', 'm']
+            for col, color in zip(y_values, colors):
+                ax1.plot(x_series, self.data[col], color + '-', label=col)
+            ax1.set_ylabel('Values', color='b')
+            ax1.legend(loc='upper left')
+
+        ax1.set_xlabel(x_label)
+        plt.title(f"Plot of {', '.join(y_values)}")
+        return fig
+
+    def plot_scatter(self, y_values=None, share_y=False):
+        """Scatter plot for up to four columns.
+
+        y_values normalized similarly to :meth:`plot_data` above.  Sharing of the
+        y-axis follows the same rules as the line plot.
+        """
+        plt.style.use('ggplot')
+        if self.x_is_datetime and self.x_value:
+            x_data = self.data[self.x_value]
+            x_label = self.x_value
+        else:
+            x_data = self.data['data_index']
+            x_label = 'Index'
+        
+        fig, ax1 = plt.subplots(figsize=(15, 10))
+        x_series = self.data[x_data.name] if hasattr(x_data, 'name') else x_data
+
+        # normalize y_values
+        if y_values is None:
+            y_values = [self.y_value] if self.y_value else []
+        elif isinstance(y_values, str):
+            y_values = [y_values]
+        else:
+            y_values = list(y_values)
+
+        n = len(y_values)
+        if n == 0:
+            return fig
+        elif n == 1:
+            ax1.scatter(x_series, self.data[y_values[0]], c='b', label=y_values[0])
+            ax1.set_ylabel(y_values[0], color='b')
+            ax1.legend(loc='upper left')
+        elif n == 2:
+            if share_y:
+                colors = ['b', 'r']
+                for col, color in zip(y_values, colors):
+                    ax1.scatter(x_series, self.data[col], c=color, label=col)
+                ax1.set_ylabel(', '.join(y_values), color='b')
+                ax1.legend(loc='upper left')
+            else:
+                ax2 = ax1.twinx()
+                ax1.scatter(x_series, self.data[y_values[0]], c='b', label=y_values[0])
+                ax2.scatter(x_series, self.data[y_values[1]], c='r', label=y_values[1])
+                ax1.set_ylabel(y_values[0], color='b')
+                ax2.set_ylabel(y_values[1], color='r')
+                ax1.legend(loc='upper left')
+                ax2.legend(loc='upper right')
+        else:
+            colors = ['b', 'r', 'g', 'm']
+            for col, color in zip(y_values, colors):
+                ax1.scatter(x_series, self.data[col], c=color, label=col)
+            ax1.set_ylabel('Values', color='b')
+            ax1.legend(loc='upper left')
+
+        ax1.set_xlabel(x_label)
+        plt.title(f"Scatter of {', '.join(y_values)}")
+        return fig
+
 
 # === Streamlit App Logic ===
 st.title("📊 CSV Data Plotter (Auto DateTime Detection)")
@@ -171,7 +291,8 @@ st.title("📊 CSV Data Plotter (Auto DateTime Detection)")
 uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"], key="csv_uploader")
 
 if uploaded_file:
-    data_instance = TestData(uploaded_file)
+    header_row = st.number_input("Header Row (0-based)", min_value=0, value=0, step=1, key="header_row")
+    data_instance = TestData(uploaded_file, header=header_row)
     st.success(f"✅ File '{uploaded_file.name}' loaded successfully!")
 
     # Display data preview
