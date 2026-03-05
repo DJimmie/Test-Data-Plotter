@@ -22,21 +22,29 @@ class TestData:
         self.update_available_columns()
 
     def parse_datetime_column(self):
-        """Check if there is a column that can be parsed as datetime."""
+        possible_formats = [
+            '%Y-%m-%d %H:%M:%S',     # 2024-12-31 14:30:00
+            '%H:%M:%S',                # 14:30:00
+            # add more if you know your data has other patterns
+        ]
+
         for col in self.data.columns:
-            try:
-                # Replace with your actual date format, e.g., '%Y-%m-%d %H:%M:%S' or '%d/%m/%Y'
-                self.data[col] = pd.to_datetime(self.data[col], format='%Y-%m-%d %H:%M:%S', errors='coerce')
-                if pd.api.types.is_datetime64_any_dtype(self.data[col]):
-                    self.x_is_datetime = True
-                    self.x_value = col
-                    break
-                else:
-                    # Revert if partial failure
-                    self.data[col] = self.data[col].astype(object)
-            except Exception as e:
-                print(f"Error parsing column {col}: {e}")  # Add logging for debugging
-                continue
+            if self.data[col].dtype == 'object':  # only try string-like columns
+                for fmt in possible_formats:
+                    try:
+                        converted = pd.to_datetime(
+                            self.data[col],
+                            format=fmt,
+                            errors='coerce'
+                        )
+                        if converted.notna().mean() > 0.8:  # e.g. >80% parsed successfully
+                            self.data[col] = converted
+                            self.x_is_datetime = True
+                            self.x_value = col
+                            print(f"Success with format {fmt} on column '{col}'")
+                            return  # stop after first good format
+                    except:
+                        continue
 
     def create_datetime_column_if_needed(self):
         """Create a 'Datetime' column if 'timestamp' column is detected as Unix timestamp."""
