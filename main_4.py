@@ -24,28 +24,29 @@ class TestData:
     def parse_datetime_column(self):
         possible_formats = [
             '%Y-%m-%d %H:%M:%S',     # 2024-12-31 14:30:00
-            '%H:%M:%S.sss',         # 14:30:00.123
-            '%Y-%m-%d %H:%M:%S.sss',  # 2024-12-31 14:30:00.123
+            '%H:%M:%S.%f',         # 14:30:00.123
+            '%H:%M:%S',         # 14:30:00.123
+            '%Y-%m-%d %H:%M:%S.%f',  # 2024-12-31 14:30:00.123
             # you know your data has other patterns
         ]
 
         for col in self.data.columns:
-            if self.data[col].dtype == 'object':  # only try string-like columns
-                for fmt in possible_formats:
-                    try:
-                        converted = pd.to_datetime(
-                            self.data[col],
-                            format=fmt,
-                            errors='coerce'
-                        )
-                        if converted.notna().mean() > 0.8:  # e.g. >80% parsed successfully
-                            self.data[col] = converted
-                            self.x_is_datetime = True
-                            self.x_value = col
-                            print(f"Success with format {fmt} on column '{col}'")
-                            return  # stop after first good format
-                    except:
-                        continue
+            # if self.data[col].dtype == 'object':  # only try string-like columns
+            for fmt in possible_formats:
+                try:
+                    converted = pd.to_datetime(
+                        self.data[col],
+                        format=fmt,
+                        errors='coerce'
+                    )
+                    if converted.notna().mean() > 0.8:  # e.g. >80% parsed successfully
+                        self.data[col] = converted
+                        self.x_is_datetime = True
+                        self.x_value = col
+                        print(f"Success with format {fmt} on column '{col}'")
+                        return  # stop after first good format
+                except:
+                    continue
 
     def create_datetime_column_if_needed(self):
         """Create a 'Datetime' column if 'timestamp' column is detected as Unix timestamp."""
