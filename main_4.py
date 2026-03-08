@@ -249,6 +249,33 @@ class TestData:
         plt.tight_layout()
         plt.show()
 
+    def plot_2d_histogram(self, column1, column2, bins=30):
+        """Plot a 2D histogram for two specified columns."""
+        plt.style.use('ggplot')
+        fig, ax = plt.subplots(figsize=(12, 8))
+        
+        # Convert to numeric, handling non-numeric values
+        data1 = pd.to_numeric(self.data[column1], errors='coerce').dropna()
+        data2 = pd.to_numeric(self.data[column2], errors='coerce').dropna()
+        
+        # Find common indices and align data
+        common_idx = data1.index.intersection(data2.index)
+        data1 = data1.loc[common_idx]
+        data2 = data2.loc[common_idx]
+        
+        # Create 2D histogram
+        h = ax.hist2d(data1, data2, bins=bins, cmap='magma_r', edgecolors='black', linewidth=0.5)
+        
+        # Add colorbar
+        cbar = plt.colorbar(h[3], ax=ax)
+        cbar.set_label('Frequency')
+        
+        ax.set_xlabel(column1)
+        ax.set_ylabel(column2)
+        ax.set_title(f'2D Histogram: {column1} vs {column2}')
+        
+        return fig
+
     def get_min_max(self, column):
         """Get min and max values for a specified column."""
         return self.data[column].min(), self.data[column].max()
@@ -267,7 +294,7 @@ class UserInterface(Tk):
     def __init__(self):
         super().__init__()
         self.title("Data Plotter")
-        self.geometry("700x600")
+        self.geometry("900x600")
         self.data = None
         self.create_widgets()
 
@@ -312,6 +339,9 @@ class UserInterface(Tk):
         
         self.boxplot_button = Button(button_frame, text="Box Plot", command=self.plot_boxplot_ui)
         self.boxplot_button.grid(row=0, column=3, padx=5)
+        
+        self.histogram_2d_button = Button(button_frame, text="2D Histogram", command=self.plot_2d_histogram_ui)
+        self.histogram_2d_button.grid(row=0, column=4, padx=5)
         
         self.info_label = Label(self, text="")
         self.info_label.pack(pady=10)
@@ -452,6 +482,31 @@ class UserInterface(Tk):
             stats_text += f"{col}: Min={stats['min']:.2f}, Max={stats['max']:.2f}, Avg={stats['mean']:.2f}, Std={stats['std']:.2f}\n"
         
         self.info_label.config(text=stats_text.strip())
+
+    def plot_2d_histogram_ui(self):
+        """Plot 2D histogram for two selected columns."""
+        selected_indices = self.column_list.curselection()
+        selected_columns = [self.column_list.get(i) for i in selected_indices]
+        
+        if not selected_columns:
+            messagebox.showwarning("Selection Error", "Please select two columns.")
+            return
+        
+        if len(selected_columns) != 2:
+            messagebox.showwarning("Selection Error", "Please select exactly 2 columns for 2D histogram.")
+            return
+
+        column1, column2 = selected_columns
+        fig = self.data.plot_2d_histogram(column1, column2)
+        plt.show()
+        
+        # Display basic stats for both columns
+        stats1 = self.data.get_stats(column1)
+        stats2 = self.data.get_stats(column2)
+        stats_text = f"{column1}: Min={stats1['min']:.2f}, Max={stats1['max']:.2f}, Avg={stats1['mean']:.2f}, Std={stats1['std']:.2f}\n"
+        stats_text += f"{column2}: Min={stats2['min']:.2f}, Max={stats2['max']:.2f}, Avg={stats2['mean']:.2f}, Std={stats2['std']:.2f}"
+        
+        self.info_label.config(text=stats_text)
 
 if __name__ == "__main__":
     ui = UserInterface()
