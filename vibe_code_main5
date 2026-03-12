@@ -1,0 +1,5 @@
+Do the following for main_5.py:
+
+1. if the 'Header Row' value is 9, we will treat the data as a 'TDC dataset' and do the following:
+a. delete all columns all columns after column 27
+b. delete all columns with header named 'UNUSED'

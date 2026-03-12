@@ -1,0 +1,15 @@
+Do the following for main_6.py:
+
+
+Provide a way for the user to select a range of data from the data set along the x-axis in the format that is available. In other words, allowing the user to zoom in on a subrange of the dataset. 
+
+The user can the generate the available plots options within that range.
+
+This feature shall be applicable for x-axis datatype options specified in the program.
+
+The default shall be the full range of the x-axis. 
+
+The user shall be able to reset to the default range.
+
+
+For example if the x-axis format is in Datetime and it ranges from '2026-03-01 12:30:06' thru '2026-03-01 15:30:25', the user should be able to zoom in on the data from '2026-03-01 13:30:00' thru '2026-03-01 14:30:00' and generate the available plots.
